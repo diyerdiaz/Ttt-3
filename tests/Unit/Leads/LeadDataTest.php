@@ -22,7 +22,7 @@ it('returns a copy with the given status and leaves the original untouched', fun
 
 it('accepts names up to 150 characters, counting characters and not bytes', function (): void {
     expect((new LeadData(str_repeat('a', 150)))->name)->toHaveLength(150)
-        ->and((new LeadData(str_repeat('ñ', 150)))->name)->toHaveLength(300);
+        ->and(strlen((new LeadData(str_repeat('ñ', 150)))->name))->toBe(300);
 });
 
 it('rejects an empty or blank name', function (string $name): void {

@@ -12,19 +12,31 @@ use App\Domain\Leads\ValueObjects\LeadData;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 
 final class EloquentLeadRepository implements LeadBoardRepository, LeadRepository
 {
-    private const array LISTING_COLUMNS = ['id', 'name', 'email', 'phone', 'company', 'status', 'position', 'created_at'];
+    private const array LISTING_COLUMNS = ['id', 'name', 'email', 'phone', 'company', 'status'];
 
-    public static function lockKey(): int
+    private const int LOCK_NAMESPACE = 7301;
+
+    private const int BOARD_LOCK = 1;
+
+    /**
+     * @return array{int, int} namespace and key of the advisory lock, so it cannot collide with other locks
+     */
+    public static function lockKey(): array
     {
-        return crc32('leads.board');
+        return [self::LOCK_NAMESPACE, self::BOARD_LOCK];
     }
 
     public function lockBoard(): void
     {
-        DB::select('select pg_advisory_xact_lock(?)', [self::lockKey()]);
+        if (DB::transactionLevel() === 0) {
+            throw new LogicException('The board lock must be taken inside a transaction, or it is released at once.');
+        }
+
+        DB::select('select pg_advisory_xact_lock(?, ?)', self::lockKey());
     }
 
     public function find(int $id): ?Lead
@@ -39,7 +51,9 @@ final class EloquentLeadRepository implements LeadBoardRepository, LeadRepositor
 
     public function create(LeadData $data, int $position): Lead
     {
-        $lead = new Lead([...$this->attributes($data), 'position' => $position]);
+        $lead = new Lead($this->attributes($data));
+        $lead->status = $data->status ?? LeadStatus::New;
+        $lead->position = $position;
         $lead->save();
 
         return $lead;
@@ -48,6 +62,10 @@ final class EloquentLeadRepository implements LeadBoardRepository, LeadRepositor
     public function update(Lead $lead, LeadData $data, ?int $position = null): Lead
     {
         $lead->fill($this->attributes($data));
+
+        if ($data->status !== null) {
+            $lead->status = $data->status;
+        }
 
         if ($position !== null) {
             $lead->position = $position;
@@ -93,7 +111,6 @@ final class EloquentLeadRepository implements LeadBoardRepository, LeadRepositor
             'phone' => $data->phone?->value(),
             'company' => $data->company,
             'notes' => $data->notes,
-            'status' => $data->status,
         ];
     }
 }

@@ -28,7 +28,9 @@ final class InMemoryLeadStore implements LeadBoardRepository, LeadRepository
 
     public function seed(LeadStatus $status, int $position): Lead
     {
-        $lead = new Lead(['name' => 'Seed '.($this->lastId + 1), 'status' => $status, 'position' => $position]);
+        $lead = new Lead(['name' => 'Seed '.($this->lastId + 1)]);
+        $lead->status = $status;
+        $lead->position = $position;
         $lead->setAttribute('id', ++$this->lastId);
 
         return $this->leads[$this->lastId] = $lead;
@@ -51,10 +53,12 @@ final class InMemoryLeadStore implements LeadBoardRepository, LeadRepository
 
     public function create(LeadData $data, int $position): Lead
     {
-        $this->calls[] = "create:{$data->status->value}@{$position}";
+        $status = $data->status ?? LeadStatus::New;
+        $this->calls[] = "create:{$status->value}@{$position}";
 
-        $lead = $this->seed($data->status, $position);
+        $lead = $this->seed($status, $position);
         $lead->fill($this->attributes($data));
+        $lead->syncOriginal();
 
         return $lead;
     }
@@ -65,9 +69,15 @@ final class InMemoryLeadStore implements LeadBoardRepository, LeadRepository
 
         $lead->fill($this->attributes($data));
 
+        if ($data->status !== null) {
+            $lead->status = $data->status;
+        }
+
         if ($position !== null) {
             $lead->position = $position;
         }
+
+        $lead->syncChanges()->syncOriginal();
 
         return $lead;
     }
@@ -100,7 +110,6 @@ final class InMemoryLeadStore implements LeadBoardRepository, LeadRepository
             'phone' => $data->phone?->value(),
             'company' => $data->company,
             'notes' => $data->notes,
-            'status' => $data->status,
         ];
     }
 }

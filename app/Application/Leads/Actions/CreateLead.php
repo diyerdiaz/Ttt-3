@@ -6,6 +6,7 @@ namespace App\Application\Leads\Actions;
 
 use App\Domain\Leads\Contracts\LeadBoardRepository;
 use App\Domain\Leads\Contracts\LeadRepository;
+use App\Domain\Leads\Enums\LeadStatus;
 use App\Domain\Leads\Events\LeadCreated;
 use App\Domain\Leads\Models\Lead;
 use App\Domain\Leads\ValueObjects\LeadData;
@@ -26,7 +27,9 @@ final readonly class CreateLead
         return $this->transactions->run(function () use ($data): Lead {
             $this->board->lockBoard();
 
-            $lead = $this->leads->create($data, $this->leads->nextPositionIn($data->status));
+            $data = $data->withStatus($data->status ?? LeadStatus::New);
+
+            $lead = $this->leads->create($data, $this->leads->nextPositionIn($data->status ?? LeadStatus::New));
 
             $this->events->dispatch(new LeadCreated((int) $lead->id));
 

@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Model;
  * @property LeadStatus $status
  * @property int $position
  */
-#[Fillable(['name', 'email', 'phone', 'company', 'notes', 'status', 'position'])]
+#[Fillable(['name', 'email', 'phone', 'company', 'notes'])]
 #[UseFactory(LeadFactory::class)]
 class Lead extends Model
 {

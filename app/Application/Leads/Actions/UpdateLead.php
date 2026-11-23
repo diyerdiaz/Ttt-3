@@ -8,6 +8,7 @@ use App\Domain\Leads\Contracts\LeadBoardRepository;
 use App\Domain\Leads\Contracts\LeadRepository;
 use App\Domain\Leads\Events\LeadStatusChanged;
 use App\Domain\Leads\Events\LeadUpdated;
+use App\Domain\Leads\Exceptions\InvalidStatusTransition;
 use App\Domain\Leads\Models\Lead;
 use App\Domain\Leads\ValueObjects\LeadData;
 use App\Domain\Shared\Contracts\TransactionManager;
@@ -29,18 +30,25 @@ final readonly class UpdateLead
 
             $current = $this->leads->findOrFail($id);
             $from = $current->status;
-            $statusChanged = $from !== $data->status;
+            $to = $data->status ?? $from;
+            $statusChanged = $from !== $to;
+
+            if ($statusChanged && ! $from->canTransitionTo($to)) {
+                throw InvalidStatusTransition::between($from, $to);
+            }
 
             $lead = $this->leads->update(
                 $current,
-                $data,
-                $statusChanged ? $this->leads->nextPositionIn($data->status) : null,
+                $data->withStatus($to),
+                $statusChanged ? $this->leads->nextPositionIn($to) : null,
             );
 
-            $this->events->dispatch(new LeadUpdated($id));
+            if ($lead->wasChanged()) {
+                $this->events->dispatch(new LeadUpdated($id));
+            }
 
             if ($statusChanged) {
-                $this->events->dispatch(new LeadStatusChanged($id, $from, $data->status));
+                $this->events->dispatch(new LeadStatusChanged($id, $from, $to));
             }
 
             return $lead;

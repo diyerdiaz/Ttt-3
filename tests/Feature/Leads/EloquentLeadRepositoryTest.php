@@ -137,7 +137,7 @@ describe('search', function (): void {
 it('takes the board advisory lock that other connections can see', function (): void {
     config(['database.connections.second' => config('database.connections.'.config('database.default'))]);
     $other = DB::connection('second');
-    $probe = static fn (): bool => (bool) $other->selectOne('select pg_try_advisory_xact_lock(?, ?) as free', [...EloquentLeadRepository::lockKey()])->free;
+    $probe = static fn (): bool => (bool) $other->selectOne('select pg_try_advisory_xact_lock(?, ?) as free', EloquentLeadRepository::lockKey())->free;
 
     expect($probe())->toBeTrue();
 
