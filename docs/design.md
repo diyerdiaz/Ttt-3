@@ -272,3 +272,12 @@ Implementa `laravel-specialist`; audita `security-scanner` (inyección CSV).
 - **Livewire**: tablero con `#[Computed]` para columnas, `#[Locked]` en IDs, payload del drag solo IDs; formularios con `wire:model.blur`.
 - **Producción**: `php artisan optimize`, OPcache, autoload optimizado (README §Producción).
 - **Auditoría**: `performance-engineer` revisa `feat/kanban-pipeline` y `feat/csv-export` además de `code-reviewer`.
+
+## Backlog técnico (menores aprobados para después)
+- `Env::bool`: usar `FILTER_NULL_ON_FAILURE` (una errata como "ture" no debe leerse como false) + dataset de bool en EnvTest.
+- `BCRYPT_LIMIT=0` desactiva el límite de 72 bytes: tratar 0 como 72 o documentar que no se toca.
+- `Env::int`: validar con `FILTER_VALIDATE_INT` (hoy acepta "1e3", "7.9").
+- Renombrar `App\Infrastructure\Support\Env` a `TypedEnv` para no confundir con `Illuminate\Support\Env`.
+- `TestSuiteHygieneTest` no detecta funciones con sangría ni `define()`.
+- `CreateAdminUser::hash()` traduce cualquier InvalidArgumentException a WeakPassword.
+- Mensaje de `WeakPassword` habla de "72 caracteres" (son bytes).
