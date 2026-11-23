@@ -22,9 +22,13 @@ it('forbids authenticated non-admin users', function (): void {
     $this->actingAs(Accounts::user())->get('/')->assertForbidden();
 });
 
-it('shows the dashboard placeholder to admins', function (): void {
+it('sends admins from the dashboard to the pipeline', function (): void {
+    $this->actingAs(Accounts::admin())->get('/')->assertRedirect('/pipeline');
+});
+
+it('shows the navigation and the logout form to admins', function (): void {
     $this->actingAs(Accounts::admin())
-        ->get('/')
+        ->get('/pipeline')
         ->assertOk()
         ->assertSee('Leads')
         ->assertSee('action="'.route('logout').'"', false)
