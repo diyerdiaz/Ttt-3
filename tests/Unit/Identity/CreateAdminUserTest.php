@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 use App\Application\Identity\Actions\CreateAdminUser;
 use App\Application\Identity\DTOs\NewUserData;
-use App\Domain\Identity\Exceptions\AdminAlreadyExists;
+use App\Domain\Identity\Exceptions\EmailAlreadyTaken;
+use App\Domain\Identity\Exceptions\WeakPassword;
 use App\Domain\Shared\ValueObjects\EmailAddress;
 use Illuminate\Hashing\BcryptHasher;
 use Tests\Support\InMemoryUserRepository;
@@ -33,4 +34,24 @@ it('refuses to create an admin when the email already exists', function (): void
     $action(new NewUserData('Ada', EmailAddress::fromString('ada@example.com'), 'plain-password-123'));
 
     $action(new NewUserData('Other', EmailAddress::fromString('ADA@example.com'), 'another-password-1'));
-})->throws(AdminAlreadyExists::class, 'ada@example.com');
+})->throws(EmailAlreadyTaken::class, 'ada@example.com');
+
+it('rejects a password that does not satisfy the password policy', function (string $password): void {
+    $repository = new InMemoryUserRepository;
+    $action = new CreateAdminUser($repository, new BcryptHasher(['rounds' => 4]));
+
+    try {
+        $action(new NewUserData('Ada', EmailAddress::fromString('ada@example.com'), $password));
+    } finally {
+        expect($repository->users)->toBe([]);
+    }
+})->with([
+    'too short' => ['short-pass1'],
+    'too long' => [str_repeat('a', 73)],
+])->throws(WeakPassword::class);
+
+it('accepts passwords between 12 and 72 characters', function (string $password): void {
+    $action = new CreateAdminUser(new InMemoryUserRepository, new BcryptHasher(['rounds' => 4]));
+
+    expect($action(new NewUserData('Ada', EmailAddress::fromString('ada@example.com'), $password)))->toBeInstanceOf(User::class);
+})->with([str_repeat('a', 12), str_repeat('a', 72)]);

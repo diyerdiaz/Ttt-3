@@ -53,3 +53,17 @@ it('seeds only the admin from the database seeder', function (): void {
 
     expect(User::query()->count())->toBe(1);
 });
+
+it('fails instead of silently skipping when the email belongs to a non-admin user', function (): void {
+    User::factory()->create(['email' => 'boss@example.com']);
+    config(['crm.admin.email' => 'boss@example.com', 'crm.admin.password' => Auth::STRONG_PASSWORD]);
+
+    expect(fn () => $this->seed(AdminUserSeeder::class))->toThrow(RuntimeException::class, 'no es administrador');
+    expect(User::query()->where('is_admin', true)->count())->toBe(0);
+});
+
+it('rejects an invalid ADMIN_EMAIL', function (): void {
+    config(['crm.admin.email' => 'not-an-email', 'crm.admin.password' => Auth::STRONG_PASSWORD]);
+
+    expect(fn () => $this->seed(AdminUserSeeder::class))->toThrow(RuntimeException::class, 'ADMIN_EMAIL');
+});

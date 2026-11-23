@@ -23,3 +23,8 @@ it('compares email addresses by value', function (): void {
     expect(EmailAddress::fromString('A@b.com')->equals(EmailAddress::fromString('a@B.com')))->toBeTrue()
         ->and(EmailAddress::fromString('a@b.com')->equals(EmailAddress::fromString('c@b.com')))->toBeFalse();
 });
+
+it('exposes the normalization used everywhere as a single source', function (): void {
+    expect(EmailAddress::normalize("  MiXed@Example.COM\t"))->toBe('mixed@example.com')
+        ->and(EmailAddress::normalize(''))->toBe('');
+});

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Identity\Contracts\UserRepository;
+use App\Domain\Identity\Exceptions\EmailAlreadyTaken;
 use App\Domain\Identity\Models\User;
 use App\Domain\Shared\ValueObjects\EmailAddress;
 use App\Infrastructure\Persistence\EloquentUserRepository;
@@ -27,3 +28,9 @@ it('finds a user by email without distinguishing case', function (): void {
     expect($repository->findByEmail(EmailAddress::fromString('ADA@example.com')))->toBeInstanceOf(User::class)
         ->and($repository->findByEmail(EmailAddress::fromString('nobody@example.com')))->toBeNull();
 });
+
+it('translates a unique violation into EmailAlreadyTaken', function (): void {
+    User::factory()->create(['email' => 'ada@example.com']);
+
+    app(UserRepository::class)->createAdmin('Other', EmailAddress::fromString('ADA@example.com'), 'hash');
+})->throws(EmailAlreadyTaken::class);
