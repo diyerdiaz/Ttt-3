@@ -3,7 +3,159 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/*
+ * Accent colour: change ONLY these seven variables to re-theme the whole app
+ * (buttons, links, focus rings, active nav). Default: sober indigo.
+ */
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Inter, Roboto, 'Helvetica Neue', sans-serif,
+        'Apple Color Emoji', 'Segoe UI Emoji';
+
+    --color-accent-50: oklch(0.962 0.018 272);
+    --color-accent-100: oklch(0.93 0.034 273);
+    --color-accent-300: oklch(0.785 0.115 274);
+    --color-accent-400: oklch(0.673 0.182 276);
+    --color-accent-500: oklch(0.585 0.233 277);
+    --color-accent-600: oklch(0.511 0.262 277);
+    --color-accent-700: oklch(0.457 0.24 277);
+}
+
+@layer base {
+    html {
+        color-scheme: light dark;
+    }
+
+    body {
+        @apply bg-zinc-50 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100;
+        font-feature-settings: 'cv11', 'ss01';
+    }
+
+    ::selection {
+        @apply bg-accent-100 text-accent-700 dark:bg-accent-600/40 dark:text-white;
+    }
+
+    :focus-visible {
+        @apply outline-2 outline-offset-2 outline-accent-500;
+    }
+}
+
+@utility btn {
+        @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
+            transition active:scale-[0.98];
+}
+
+@utility alert {
+        @apply rounded-lg border px-3.5 py-2.5 text-sm;
+}
+
+@layer components {
+    .surface {
+        @apply rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900;
+    }
+
+    .page-title {
+        @apply text-xl font-semibold tracking-tight;
+    }
+
+    .muted {
+        @apply text-zinc-500 dark:text-zinc-400;
+    }
+
+    .label {
+        @apply block text-sm font-medium text-zinc-700 dark:text-zinc-300;
+    }
+
+    .field {
+        @apply mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-xs
+            transition placeholder:text-zinc-400 hover:border-zinc-400
+            focus:border-accent-500 focus:outline-2 focus:outline-offset-0 focus:outline-accent-500/30
+            aria-invalid:border-red-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100
+            dark:hover:border-zinc-600 dark:focus:border-accent-400 dark:aria-invalid:border-red-500;
+    }
+
+    .field-error {
+        @apply mt-1.5 text-sm text-red-700 dark:text-red-400;
+    }
+
+    .btn-primary {
+        @apply btn bg-accent-600 text-white shadow-xs hover:bg-accent-700
+            dark:bg-accent-500 dark:hover:bg-accent-400 dark:text-white;
+    }
+
+    .btn-ghost {
+        @apply btn border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-100
+            dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
+    }
+
+    .link {
+        @apply rounded-sm text-accent-700 underline-offset-4 transition hover:underline dark:text-accent-300;
+    }
+
+    .alert-error {
+        @apply alert border-red-200 bg-red-50 text-red-800 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300;
+    }
+
+    .alert-success {
+        @apply alert border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300;
+    }
+
+    .empty-state {
+        @apply rounded-xl border border-dashed border-zinc-300 px-4 py-10 text-center text-sm text-zinc-500
+            dark:border-zinc-700 dark:text-zinc-400;
+    }
+
+    .kanban-list {
+        @apply min-h-16;
+    }
+
+    .kanban-list:not(:has(li))::before {
+        @apply flex h-16 items-center justify-center rounded-lg border border-dashed border-zinc-300 text-xs
+            text-zinc-400 content-['Sin_leads'] dark:border-zinc-700 dark:text-zinc-500;
+    }
+
+    /* SortableJS states */
+    .kanban-card {
+        @apply cursor-grab rounded-lg border border-zinc-200 bg-white p-3 text-sm shadow-xs transition
+            hover:-translate-y-px hover:border-zinc-300 hover:shadow-md active:cursor-grabbing
+            dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700;
+    }
+
+    .kanban-ghost {
+        @apply border-dashed border-accent-400 bg-accent-50 opacity-60 shadow-none dark:bg-accent-600/15;
+    }
+
+    .kanban-chosen {
+        @apply shadow-lg ring-2 ring-accent-500/40;
+    }
+
+    .kanban-drag {
+        @apply rotate-1 opacity-90;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
+    .btn:active,
+    .kanban-card:hover,
+    .kanban-drag {
+        transform: none !important;
+    }
+}
+
+@keyframes rise-in {
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
+}
+
+main > * {
+    animation: rise-in 0.25s ease-out;
 }
