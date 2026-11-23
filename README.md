@@ -76,7 +76,7 @@ composer analyse   # Larastan, nivel max
 
 - Los tests corren siempre contra la BD `crm_test`; una guardia aborta si se usa otra.
 - **No ejecutes `./vendor/bin/pint` en modo escritura** (sin `--test`): reformatearía `tests/Fixtures/Arch`, que contiene clases infractoras a propósito, y rompería los tests canario de arquitectura. Usa `composer lint`.
-- E2E: `npm run test:e2e` con Playwright y la BD `crm_e2e`. Se está añadiendo en paralelo y puede no estar disponible todavía.
+- E2E: `npm run test:e2e` (Playwright + Chromium, BD propia `crm_e2e`; levanta el servidor en el puerto 8010 y prepara la BD y el admin de prueba automáticamente).
 
 ## Arquitectura en breve
 
