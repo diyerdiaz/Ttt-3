@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Infrastructure\Support\Env;
 use Illuminate\Support\Str;
 
 return [
@@ -171,10 +172,8 @@ return [
     |
     */
 
-    // An empty value (as in .env.example) means "not set": fall back to HTTPS-only in production.
-    'secure' => in_array(env('SESSION_SECURE_COOKIE'), [null, ''], true)
-        ? env('APP_ENV') === 'production'
-        : filter_var(env('SESSION_SECURE_COOKIE'), FILTER_VALIDATE_BOOLEAN),
+    // Unset or empty (as in .env.example) falls back to HTTPS-only in production; an explicit value wins.
+    'secure' => Env::bool('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Infrastructure\Support\Env;
 use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
@@ -72,7 +73,7 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/security.log'),
             'level' => 'info',
-            'days' => (int) (env('SECURITY_LOG_DAYS') ?: 90),
+            'days' => Env::int('SECURITY_LOG_DAYS', 90),
             'formatter' => JsonFormatter::class,
             'replace_placeholders' => true,
         ],
