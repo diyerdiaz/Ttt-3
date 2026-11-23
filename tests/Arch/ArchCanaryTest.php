@@ -39,6 +39,12 @@ dataset('forbidden uses', [
     'application -> DB facade' => ['Application', 'UsesDbFacade', 'Illuminate\Support\Facades\DB'],
     'http -> infrastructure' => ['Http', 'UsesInfrastructure', 'Infrastructure'],
     'http -> DB facade' => ['Http', 'UsesDbFacade', 'Illuminate\Support\Facades\DB'],
+    'application -> DatabaseManager' => ['Application', 'UsesDatabaseManager', 'Illuminate\Database\DatabaseManager'],
+    'application -> ConnectionInterface' => ['Application', 'UsesConnectionInterface', 'Illuminate\Database\ConnectionInterface'],
+    'application -> Connection' => ['Application', 'UsesConnection', 'Illuminate\Database\Connection'],
+    'http -> DatabaseManager' => ['Http', 'UsesDatabaseManager', 'Illuminate\Database\DatabaseManager'],
+    'http -> ConnectionInterface' => ['Http', 'UsesConnectionInterface', 'Illuminate\Database\ConnectionInterface'],
+    'http -> Connection' => ['Http', 'UsesConnection', 'Illuminate\Database\Connection'],
 ]);
 
 it('detects a forbidden dependency', function (string $layer, string $class, string $dependency): void {
