@@ -27,3 +27,5 @@ Homestead.yaml
 Thumbs.db
 /coverage
 /build/coverage
+/test-results/
+/playwright-report/
