@@ -22,3 +22,7 @@ foreach (ArchRules::FINAL_LAYERS as $layer) {
 foreach (ArchRules::ELOQUENT_FREE_LAYERS as $layer) {
     arch("{$layer} does not hold Eloquent models", fn () => ArchRules::assertNoEloquentModels($layer));
 }
+
+it('keeps app/ restricted to the allowed layer directories', function (): void {
+    expect(ArchRules::unexpectedAppEntries(dirname(__DIR__, 2).'/app'))->toBe([]);
+});

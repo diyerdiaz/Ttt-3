@@ -77,3 +77,20 @@ it('detects a file without strict types', function (): void {
     expect(fn () => ArchRules::assertStrictTypes(archFixture('Violations', 'MissingStrictTypes')))
         ->toThrow(AssertionFailedError::class, 'strict types');
 });
+
+it('detects a root namespace outside the layer allowlist', function (): void {
+    $app = sys_get_temp_dir().'/arch-canary-'.bin2hex(random_bytes(4));
+
+    foreach (['Domain', 'Http', 'Services', 'Models'] as $directory) {
+        mkdir($app.'/'.$directory, 0777, true);
+    }
+    touch($app.'/Stray.php');
+
+    try {
+        expect(ArchRules::unexpectedAppEntries($app))->toBe(['Models', 'Services', 'Stray.php']);
+    } finally {
+        array_map(rmdir(...), glob($app.'/*', GLOB_ONLYDIR) ?: []);
+        unlink($app.'/Stray.php');
+        rmdir($app);
+    }
+});
