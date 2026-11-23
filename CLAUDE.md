@@ -18,6 +18,7 @@ Laravel 13, PHP 8.4+, PostgreSQL (BDs `crm` y `crm_test`, usuario `diyer`), Pest
 - `Application/<Contexto>/` — Actions (casos de uso) y DTOs.
 - `Infrastructure/` — repositorios Eloquent, exportadores CSV, integraciones.
 - `Http/` — controllers delgados (sin `DB` facade), Form Requests, componentes Livewire, middleware.
+- Livewire: solo componentes de clase en `App\Http\Livewire` (`config/livewire.php`: `make_command.type = class`). No se usan SFC ni MFC (componentes en vistas), porque quedarían fuera de strict types, PHPStan y las reglas arch. Los tests arch prohíben `app/Livewire`.
 - Bindings interfaz→implementación en `App\Providers\DomainServiceProvider`.
 
 ## Convenciones
