@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use Tests\Support\Auth;
 
@@ -90,6 +92,8 @@ it('validates that email and password are present', function (array $payload, st
 })->with([
     'missing email' => [['password' => 'x'], 'email'],
     'missing password' => [['email' => 'ada@example.com'], 'password'],
+    'overlong email' => [['email' => str_repeat('a', 250).'@b.co', 'password' => 'x'], 'email'],
+    'overlong password' => [['email' => 'ada@example.com', 'password' => str_repeat('p', 1025)], 'password'],
     'array email' => [['email' => ['a'], 'password' => 'x'], 'email'],
 ]);
 
@@ -115,4 +119,12 @@ it('rejects logout via GET', function (): void {
 
 it('redirects guests posting to logout to the login form', function (): void {
     $this->post('/logout')->assertRedirect('/login');
+});
+
+it('authenticates a user stored with a mixed-case email', function (): void {
+    DB::table('users')->insert(['name' => 'Raw', 'email' => 'Mixed@Example.com', 'password' => Hash::make(Auth::STRONG_PASSWORD), 'is_admin' => true]);
+
+    $this->post('/login', ['email' => 'mixed@example.com', 'password' => Auth::STRONG_PASSWORD])->assertRedirect('/');
+
+    $this->assertAuthenticated();
 });
