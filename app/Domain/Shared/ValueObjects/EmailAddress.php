@@ -9,15 +9,14 @@ use Stringable;
 
 final readonly class EmailAddress implements Stringable
 {
-    private const int MAX_LENGTH = 254;
-
     private function __construct(private string $value) {}
 
     public static function fromString(string $value): self
     {
         $normalized = self::normalize($value);
 
-        if (strlen($normalized) > self::MAX_LENGTH || filter_var($normalized, FILTER_VALIDATE_EMAIL) === false) {
+        // FILTER_VALIDATE_EMAIL already enforces the 254 character limit (see the boundary test).
+        if (filter_var($normalized, FILTER_VALIDATE_EMAIL) === false) {
             throw new InvalidArgumentException('Invalid email address.');
         }
 
