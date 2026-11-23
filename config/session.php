@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Infrastructure\Support\Env;
 use Illuminate\Support\Str;
 
 return [
@@ -171,7 +172,8 @@ return [
     |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
+    // Unset or empty (as in .env.example) falls back to HTTPS-only in production; an explicit value wins.
+    'secure' => Env::bool('SESSION_SECURE_COOKIE', env('APP_ENV') === 'production'),
 
     /*
     |--------------------------------------------------------------------------

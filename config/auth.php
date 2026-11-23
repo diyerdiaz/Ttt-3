@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Identity\Models\User;
+use App\Infrastructure\Support\Env;
 
 return [
 
@@ -126,6 +127,6 @@ return [
     |
     */
 
-    'timebox_duration' => (int) env('AUTH_TIMEBOX_DURATION', 500000),
+    'timebox_duration' => Env::int('AUTH_TIMEBOX_DURATION', 500000),
 
 ];
