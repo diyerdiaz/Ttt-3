@@ -99,6 +99,18 @@ it('validates that email and password are present', function (array $payload, st
     'array email' => [['email' => ['a'], 'password' => 'x'], 'email'],
 ]);
 
+it('rejects an empty or blank password even for an admin stored with an empty password hash', function (string $password): void {
+    DB::table('users')->insert(['name' => 'Empty', 'email' => 'empty@example.com', 'password' => Hash::make(''), 'is_admin' => true]);
+
+    $this->post('/login', ['email' => 'empty@example.com', 'password' => $password])
+        ->assertSessionHasErrors('password');
+
+    $this->assertGuest();
+})->with([
+    'empty' => [''],
+    'blank' => ['   '],
+]);
+
 it('logs out and invalidates the session', function (): void {
     $this->actingAs(Accounts::admin())->startSession();
     session()->put('marker', 'value');
