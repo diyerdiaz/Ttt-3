@@ -9,6 +9,7 @@ use App\Domain\Activities\Contracts\ActivityRepository;
 use App\Domain\Activities\Enums\ActivityType;
 use App\Domain\Activities\Models\Activity;
 use App\Domain\Activities\ValueObjects\ActivityData;
+use App\Domain\Shared\ValueObjects\DisplayTimezone;
 use App\Http\Support\TextInput;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\View\View;
@@ -17,7 +18,6 @@ use Illuminate\Validation\Rule;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithPagination;
-use LogicException;
 use Symfony\Component\HttpFoundation\Response;
 
 final class ActivityTimeline extends Component
@@ -93,7 +93,7 @@ final class ActivityTimeline extends Component
                 'required',
                 'date_format:'.self::MOMENT_FORMAT,
                 'after_or_equal:'.self::EARLIEST_MOMENT,
-                'before_or_equal:'.CarbonImmutable::now()->addDay()->format(self::MOMENT_FORMAT),
+                'before_or_equal:'.DisplayTimezone::now()->addDay()->format(self::MOMENT_FORMAT),
             ],
         ];
     }
@@ -140,12 +140,11 @@ final class ActivityTimeline extends Component
 
     private function defaultMoment(): string
     {
-        return CarbonImmutable::now()->format(self::MOMENT_FORMAT);
+        return DisplayTimezone::now()->format(self::MOMENT_FORMAT);
     }
 
     private function moment(): CarbonImmutable
     {
-        return CarbonImmutable::createFromFormat('!'.self::MOMENT_FORMAT, $this->occurredAt, config()->string('app.timezone'))
-            ?: throw new LogicException('The moment was validated before being parsed.');
+        return DisplayTimezone::fromLocal(self::MOMENT_FORMAT, $this->occurredAt);
     }
 }

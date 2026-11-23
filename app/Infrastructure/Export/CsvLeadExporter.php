@@ -6,6 +6,7 @@ namespace App\Infrastructure\Export;
 
 use App\Domain\Leads\Contracts\LeadExporter;
 use App\Domain\Leads\Models\Lead;
+use App\Domain\Shared\ValueObjects\DisplayTimezone;
 
 final class CsvLeadExporter implements LeadExporter
 {
@@ -46,7 +47,7 @@ final class CsvLeadExporter implements LeadExporter
             CsvCellSanitizer::sanitize($lead->company),
             CsvCellSanitizer::sanitize($lead->status->label()),
             CsvCellSanitizer::sanitize($lead->notes),
-            $lead->created_at?->format('Y-m-d H:i:s') ?? '',
+            $lead->created_at === null ? '' : DisplayTimezone::toDisplay($lead->created_at)->format('Y-m-d H:i:s'),
         ];
     }
 

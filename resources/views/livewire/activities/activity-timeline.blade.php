@@ -42,7 +42,8 @@
                     @if ($activity->type)
                         <span class="rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-700">{{ $activity->type->label() }}</span>
                     @endif
-                    <time datetime="{{ $activity->occurred_at->toIso8601String() }}">{{ $activity->occurred_at->format('d/m/Y H:i') }}</time>
+                    @php($occurredAt = \App\Domain\Shared\ValueObjects\DisplayTimezone::toDisplay($activity->occurred_at))
+                    <time datetime="{{ $occurredAt->toIso8601String() }}">{{ $occurredAt->format('d/m/Y H:i') }}</time>
                 </div>
                 <p class="mt-1 whitespace-pre-line">{{ $activity->description }}</p>
             </li>

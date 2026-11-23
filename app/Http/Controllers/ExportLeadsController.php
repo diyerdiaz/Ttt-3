@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Application\Leads\Actions\ExportLeads;
 use App\Domain\Leads\Contracts\LeadExporterFactory;
+use App\Domain\Shared\ValueObjects\DisplayTimezone;
 use App\Http\Requests\ExportLeadsRequest;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -32,7 +33,7 @@ final class ExportLeadsController extends Controller
                     fclose($out);
                 }
             },
-            'leads-'.now()->format('Ymd-His').'.'.$exporter->extension(),
+            'leads-'.DisplayTimezone::now()->format('Ymd-His').'.'.$exporter->extension(),
             [
                 'Content-Type' => $exporter->contentType(),
                 'X-Content-Type-Options' => 'nosniff',
