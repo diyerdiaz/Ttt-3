@@ -33,7 +33,7 @@ it('fails the command with a weak password', function (): void {
     $this->artisan('crm:create-admin', ['email' => 'ada@example.com'])
         ->expectsQuestion('Contraseña', 'short')
         ->expectsQuestion('Confirma la contraseña', 'short')
-        ->expectsOutputToContain('mínimo 12 caracteres')
+        ->expectsOutputToContain('entre 12 y 72 caracteres')
         ->assertFailed();
 
     expect(User::query()->count())->toBe(0);
@@ -67,4 +67,12 @@ it('rejects a duplicate email regardless of case with a clear error', function (
         ->assertFailed();
 
     expect(User::query()->count())->toBe(1);
+});
+
+it('rejects a name longer than 120 characters before asking for a password', function (): void {
+    $this->artisan('crm:create-admin', ['email' => 'ada@example.com', '--name' => str_repeat('n', 121)])
+        ->expectsOutputToContain('120')
+        ->assertFailed();
+
+    expect(User::query()->count())->toBe(0);
 });
