@@ -42,7 +42,7 @@ it('fails the command with a weak password', function (): void {
     $this->artisan('crm:create-admin', ['email' => 'ada@example.com'])
         ->expectsQuestion('Contraseña', 'short')
         ->expectsQuestion('Confirma la contraseña', 'short')
-        ->expectsOutputToContain('at least 12')
+        ->expectsOutputToContain('mínimo 12 caracteres')
         ->assertFailed();
 
     expect(User::query()->count())->toBe(0);
@@ -60,7 +60,7 @@ it('fails the command when the confirmation does not match', function (): void {
 
 it('fails the command with an invalid email without asking for a password', function (): void {
     $this->artisan('crm:create-admin', ['email' => 'not-an-email'])
-        ->expectsOutputToContain('email')
+        ->expectsOutputToContain('no es válido')
         ->assertFailed();
 
     expect(User::query()->count())->toBe(0);
@@ -72,7 +72,7 @@ it('rejects a duplicate email regardless of case with a clear error', function (
     $this->artisan('crm:create-admin', ['email' => 'ADA@example.com'])
         ->expectsQuestion('Contraseña', STRONG_PASSWORD)
         ->expectsQuestion('Confirma la contraseña', STRONG_PASSWORD)
-        ->expectsOutputToContain('already exists')
+        ->expectsOutputToContain('Ya existe un usuario')
         ->assertFailed();
 
     expect(User::query()->count())->toBe(1);

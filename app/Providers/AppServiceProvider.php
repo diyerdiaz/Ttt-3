@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 final class AppServiceProvider extends ServiceProvider
 {
@@ -19,5 +20,6 @@ final class AppServiceProvider extends ServiceProvider
         Model::shouldBeStrict(! $isProduction);
         DB::prohibitDestructiveCommands($isProduction);
         Date::use(CarbonImmutable::class);
+        Password::defaults(static fn (): Password => Password::min(12));
     }
 }
