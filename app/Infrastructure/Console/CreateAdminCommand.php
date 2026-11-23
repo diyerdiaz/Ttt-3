@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Console\Commands;
+namespace App\Infrastructure\Console;
 
 use App\Application\Identity\Actions\CreateAdminUser;
 use App\Application\Identity\DTOs\NewUserData;
