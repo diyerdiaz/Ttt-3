@@ -17,15 +17,34 @@ final class SecurityHeaders
     {
         $response = $next($request);
 
-        $response->headers->set('X-Frame-Options', 'DENY');
-        $response->headers->set('Content-Security-Policy', "frame-ancestors 'none'");
-        $response->headers->set('X-Content-Type-Options', 'nosniff');
-        $response->headers->set('Referrer-Policy', 'same-origin');
+        $this->setDefault($response, 'X-Frame-Options', 'DENY');
+        $this->setDefault($response, 'X-Content-Type-Options', 'nosniff');
+        $this->setDefault($response, 'Referrer-Policy', 'same-origin');
+        $this->setFrameAncestors($response);
 
         if ($request->isSecure() && app()->isProduction()) {
-            $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+            $this->setDefault($response, 'Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
 
         return $response;
+    }
+
+    private function setDefault(Response $response, string $header, string $value): void
+    {
+        if (! $response->headers->has($header)) {
+            $response->headers->set($header, $value);
+        }
+    }
+
+    private function setFrameAncestors(Response $response): void
+    {
+        $directive = "frame-ancestors 'none'";
+        $existing = $response->headers->get('Content-Security-Policy');
+
+        if ($existing === null || $existing === '') {
+            $response->headers->set('Content-Security-Policy', $directive);
+        } elseif (! str_contains($existing, 'frame-ancestors')) {
+            $response->headers->set('Content-Security-Policy', $existing.'; '.$directive);
+        }
     }
 }
