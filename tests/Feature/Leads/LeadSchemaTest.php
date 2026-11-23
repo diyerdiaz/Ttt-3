@@ -73,10 +73,10 @@ it('declares the unique constraint as deferrable initially deferred', function (
     expect($row->condeferrable)->toBeTrue()->and($row->condeferred)->toBeTrue();
 });
 
-it('indexes lower(email) for search and duplicate lookups', function (): void {
-    $definition = DB::selectOne("select indexdef from pg_indexes where tablename = 'leads' and indexname = 'leads_email_lower_index'");
+it('only carries the indexes its queries can use', function (): void {
+    $indexes = DB::table('pg_indexes')->where('tablename', 'leads')->orderBy('indexname')->pluck('indexname')->all();
 
-    expect($definition->indexdef)->toContain('lower(')->toContain('email');
+    expect($indexes)->toBe(['leads_pkey', 'leads_status_position_unique']);
 });
 
 it('uses an identity primary key and the documented column types', function (): void {
