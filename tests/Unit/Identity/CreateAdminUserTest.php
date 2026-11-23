@@ -9,6 +9,10 @@ use App\Domain\Identity\Exceptions\AdminAlreadyExists;
 use App\Domain\Identity\Models\User;
 use App\Domain\Shared\ValueObjects\EmailAddress;
 use Illuminate\Hashing\BcryptHasher;
+use Tests\TestCase;
+
+// El cast `hashed` del modelo usa la facade Hash, que necesita el contenedor de la aplicación.
+uses(TestCase::class);
 
 function inMemoryUserRepository(): UserRepository
 {
