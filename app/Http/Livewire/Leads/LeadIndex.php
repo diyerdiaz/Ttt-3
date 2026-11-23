@@ -34,9 +34,13 @@ final class LeadIndex extends Component
 
     public function updating(string $name, mixed $value): void
     {
-        $isSearch = $name === 'search' || str_starts_with($name, 'search.');
+        $valid = match ($name) {
+            'search' => is_string($value),
+            'paginators.page' => is_int($value) || is_string($value),
+            default => false,
+        };
 
-        if ($isSearch && ($name !== 'search' || ! is_string($value))) {
+        if (! $valid) {
             abort(Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }

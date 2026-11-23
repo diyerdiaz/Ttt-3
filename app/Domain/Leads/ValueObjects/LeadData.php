@@ -25,7 +25,7 @@ final readonly class LeadData
         public ?string $notes = null,
         public ?LeadStatus $status = null,
     ) {
-        if (trim($name) === '') {
+        if ((preg_replace('/[\s\p{Z}]+/u', '', $name) ?? $name) === '') {
             throw new InvalidArgumentException('The lead name must not be blank.');
         }
 

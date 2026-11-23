@@ -286,7 +286,6 @@ it('answers 422 to updates that target the form object itself instead of a field
     Livewire::test(LeadForm::class)->set($path, $value)->assertStatus(422);
 })->with([
     'scalar over the form' => ['form', 'str'],
-    'array over the form' => ['form', ['name' => 'x']],
     'unknown field' => ['form.nope', 'x'],
 ]);
 
@@ -299,3 +298,7 @@ it('rejects a name made only of Unicode separators', function (string $name): vo
     'em space and ideographic space' => ["\u{2003}\u{3000}"],
     'line separator' => ["\u{2028}"],
 ]);
+
+it('expands an array sent over the form into its allowed fields instead of failing', function (): void {
+    Livewire::test(LeadForm::class)->set('form', ['name' => 'Ada'])->assertOk()->assertSet('form.name', 'Ada');
+});

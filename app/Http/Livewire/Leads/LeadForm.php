@@ -18,6 +18,8 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class LeadForm extends Component
 {
+    private const array WRITABLE_FIELDS = ['form.name', 'form.email', 'form.phone', 'form.company', 'form.notes', 'form.status'];
+
     #[Locked]
     public ?int $leadId = null;
 
@@ -44,7 +46,9 @@ final class LeadForm extends Component
 
     public function updating(string $name, mixed $value): void
     {
-        if (str_starts_with($name, 'form.') && (! is_string($value) || substr_count($name, '.') > 1)) {
+        $touchesForm = $name === 'form' || str_starts_with($name, 'form.');
+
+        if ($touchesForm && (! is_string($value) || ! in_array($name, self::WRITABLE_FIELDS, true))) {
             abort(Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }

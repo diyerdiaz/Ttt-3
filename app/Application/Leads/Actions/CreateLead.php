@@ -27,9 +27,10 @@ final readonly class CreateLead
         return $this->transactions->run(function () use ($data): Lead {
             $this->board->lockBoard();
 
-            $data = $data->withStatus($data->status ?? LeadStatus::New);
+            $status = $data->status ?? LeadStatus::New;
+            $data = $data->withStatus($status);
 
-            $lead = $this->leads->create($data, $this->leads->nextPositionIn($data->status ?? LeadStatus::New));
+            $lead = $this->leads->create($data, $this->leads->nextPositionIn($status));
 
             $this->events->dispatch(new LeadCreated((int) $lead->id));
 
