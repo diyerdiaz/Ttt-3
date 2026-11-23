@@ -17,6 +17,9 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class ArchRules
 {
+    /** Only these directories may exist directly under app/. */
+    public const APP_DIRECTORIES = ['Domain', 'Application', 'Infrastructure', 'Http', 'Providers'];
+
     public const ELOQUENT_FREE_LAYERS = ['Application', 'Http', 'Infrastructure'];
 
     public const FINAL_LAYERS = ['Application', 'Infrastructure'];
@@ -71,6 +74,20 @@ final class ArchRules
     public static function assertStrictTypes(string $subject = 'App'): void
     {
         self::verify(expect($subject)->toUseStrictTypes());
+    }
+
+    /**
+     * @return list<string> entries of $appPath that are not an allowed layer directory
+     */
+    public static function unexpectedAppEntries(string $appPath): array
+    {
+        $entries = array_diff(scandir($appPath) ?: [], ['.', '..']);
+
+        return array_values(array_filter(
+            $entries,
+            static fn (string $entry): bool => ! is_dir($appPath.'/'.$entry)
+                || ! in_array($entry, self::APP_DIRECTORIES, true),
+        ));
     }
 
     /**
