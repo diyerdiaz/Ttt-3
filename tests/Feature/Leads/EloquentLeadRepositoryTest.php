@@ -115,7 +115,13 @@ describe('search', function (): void {
         $found = app(LeadRepository::class)->search($term, 10)->items();
 
         expect($found)->toHaveCount(1);
-    })->with(['percent' => ['%'], 'underscore' => ['_'], 'escape' => ['\\']]);
+    })->with(['percent' => ['%'], 'underscore' => ['_']]);
+
+    it('does not fail on a backslash in the term', function (): void {
+        Lead::factory()->create();
+
+        expect(app(LeadRepository::class)->search('\\', 10)->items())->toBe([]);
+    });
 
     it('paginates and loads only the listing columns', function (): void {
         Lead::factory()->count(3)->create();
