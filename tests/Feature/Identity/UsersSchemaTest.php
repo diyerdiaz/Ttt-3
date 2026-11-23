@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use App\Domain\Identity\Models\User;
 use Illuminate\Database\Eloquent\MassAssignmentException;
+use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
-use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
