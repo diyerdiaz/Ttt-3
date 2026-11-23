@@ -34,6 +34,18 @@ abstract class TestCase extends BaseTestCase
     }
 
     /**
+     * Laravel skips CSRF verification while running unit tests; leave that mode to exercise the real middleware.
+     */
+    protected function withCsrfEnforced(): static
+    {
+        $this->app->detectEnvironment(static fn (): string => 'local');
+
+        expect($this->app->runningUnitTests())->toBeFalse();
+
+        return $this;
+    }
+
+    /**
      * @return array<class-string, class-string>
      */
     protected function setUpTraits(): array

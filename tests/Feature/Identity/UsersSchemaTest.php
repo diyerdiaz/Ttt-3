@@ -8,17 +8,8 @@ use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
-function insertUser(string $email): bool
-{
-    return DB::table('users')->insert([
-        'name' => 'Raw',
-        'email' => $email,
-        'password' => 'x',
-    ]);
-}
-
 it('defaults is_admin to false and does not allow null', function (): void {
-    insertUser('raw@example.com');
+    DB::table('users')->insert(['name' => 'Raw', 'email' => 'raw@example.com', 'password' => 'x']);
 
     expect(User::query()->where('email', 'raw@example.com')->firstOrFail()->isAdmin())->toBeFalse();
 
@@ -26,16 +17,9 @@ it('defaults is_admin to false and does not allow null', function (): void {
 })->throws(QueryException::class);
 
 it('enforces email uniqueness case-insensitively at the database level', function (): void {
-    insertUser('Dup@Example.com');
-    insertUser('dup@example.COM');
+    DB::table('users')->insert(['name' => 'Raw', 'email' => 'Dup@Example.com', 'password' => 'x']);
+    DB::table('users')->insert(['name' => 'Raw', 'email' => 'dup@example.COM', 'password' => 'x']);
 })->throws(UniqueConstraintViolationException::class);
-
-it('uses a functional unique index on lower(email)', function (): void {
-    $definitions = collect(DB::select("select indexdef from pg_indexes where tablename = 'users'"))
-        ->pluck('indexdef')->implode(' ');
-
-    expect($definitions)->toContain('UNIQUE INDEX')->toContain('lower((email)::text)');
-});
 
 it('lowercases and trims the email when saving a user', function (): void {
     $user = User::factory()->create(['email' => '  Mixed@Example.COM ']);

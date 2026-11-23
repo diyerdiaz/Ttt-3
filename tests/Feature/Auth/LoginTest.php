@@ -2,15 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Domain\Identity\Models\User;
-use Illuminate\Support\Facades\Auth;
-
-const GENERIC_ERROR = 'Credenciales inválidas';
-
-function adminUser(string $email = 'ada@example.com'): User
-{
-    return User::factory()->admin()->create(['email' => $email, 'password' => 'correct-horse-battery']);
-}
+use Illuminate\Support\Facades\Route;
+use Tests\Support\Auth;
 
 it('shows the login form to guests', function (): void {
     $this->get('/login')
@@ -21,17 +14,17 @@ it('shows the login form to guests', function (): void {
 });
 
 it('redirects authenticated users away from the login form', function (): void {
-    $this->actingAs(adminUser())->get('/login')->assertRedirect('/');
+    $this->actingAs(Auth::admin())->get('/login')->assertRedirect('/');
 });
 
 it('logs in an admin with valid credentials and regenerates the session', function (): void {
-    adminUser();
+    Auth::admin();
 
     $this->startSession();
     $before = session()->getId();
     $token = csrf_token();
 
-    $this->post('/login', ['_token' => $token, 'email' => 'ada@example.com', 'password' => 'correct-horse-battery'])
+    $this->post('/login', ['_token' => $token, 'email' => 'ada@example.com', 'password' => Auth::STRONG_PASSWORD])
         ->assertRedirect('/');
 
     $this->assertAuthenticated();
@@ -39,28 +32,29 @@ it('logs in an admin with valid credentials and regenerates the session', functi
 });
 
 it('redirects to the intended url after login', function (): void {
-    adminUser();
+    Route::middleware(['web', 'auth', 'admin'])->get('/x', static fn (): string => 'protected');
+    Auth::admin();
 
-    $this->get('/')->assertRedirect('/login');
-    $this->post('/login', ['email' => 'ada@example.com', 'password' => 'correct-horse-battery'])->assertRedirect('/');
+    $this->get('/x')->assertRedirect('/login');
+    $this->post('/login', ['email' => 'ada@example.com', 'password' => Auth::STRONG_PASSWORD])->assertRedirect('/x');
 });
 
 it('treats the email case-insensitively when authenticating', function (): void {
-    adminUser('ada@example.com');
+    Auth::admin('ada@example.com');
 
-    $this->post('/login', ['email' => '  ADA@Example.COM ', 'password' => 'correct-horse-battery'])
+    $this->post('/login', ['email' => '  ADA@Example.COM ', 'password' => Auth::STRONG_PASSWORD])
         ->assertRedirect('/');
 
     $this->assertAuthenticated();
 });
 
 it('rejects invalid credentials with a generic error', function (): void {
-    adminUser();
+    Auth::admin();
 
     $this->from('/login')
-        ->post('/login', ['email' => 'ada@example.com', 'password' => 'wrong-password-123'])
+        ->post('/login', ['email' => 'ada@example.com', 'password' => Auth::WRONG_PASSWORD])
         ->assertRedirect('/login')
-        ->assertSessionHasErrors(['email' => GENERIC_ERROR])
+        ->assertSessionHasErrors(['email' => Auth::GENERIC_ERROR])
         ->assertSessionHasInput('email', 'ada@example.com')
         ->assertSessionMissing('_old_input.password');
 
@@ -68,27 +62,26 @@ it('rejects invalid credentials with a generic error', function (): void {
 });
 
 it('does not reveal whether a user exists', function (): void {
-    adminUser();
+    Auth::admin();
 
-    $wrongPassword = $this->post('/login', ['email' => 'ada@example.com', 'password' => 'wrong-password-123'])
+    $wrongPassword = $this->post('/login', ['email' => 'ada@example.com', 'password' => Auth::WRONG_PASSWORD])
         ->assertSessionHasErrors('email');
     $messageForKnown = session('errors')->first('email');
 
-    $this->post('/login', ['email' => 'nobody@example.com', 'password' => 'wrong-password-123'])
+    $this->post('/login', ['email' => 'nobody@example.com', 'password' => Auth::WRONG_PASSWORD])
         ->assertSessionHasErrors('email');
 
-    expect(session('errors')->first('email'))->toBe($messageForKnown)->toBe(GENERIC_ERROR);
+    expect(session('errors')->first('email'))->toBe($messageForKnown)->toBe(Auth::GENERIC_ERROR);
     $wrongPassword->assertRedirect();
 });
 
 it('rejects a non-admin user with valid credentials without creating a session', function (): void {
-    User::factory()->create(['email' => 'user@example.com', 'password' => 'correct-horse-battery']);
+    Auth::user('user@example.com');
 
-    $this->post('/login', ['email' => 'user@example.com', 'password' => 'correct-horse-battery'])
-        ->assertSessionHasErrors(['email' => GENERIC_ERROR]);
+    $this->post('/login', ['email' => 'user@example.com', 'password' => Auth::STRONG_PASSWORD])
+        ->assertSessionHasErrors(['email' => Auth::GENERIC_ERROR]);
 
     $this->assertGuest();
-    expect(Auth::user())->toBeNull();
 });
 
 it('validates that email and password are present', function (array $payload, string $field): void {
@@ -101,7 +94,7 @@ it('validates that email and password are present', function (array $payload, st
 ]);
 
 it('logs out and invalidates the session', function (): void {
-    $this->actingAs(adminUser())->startSession();
+    $this->actingAs(Auth::admin())->startSession();
     session()->put('marker', 'value');
     $before = session()->getId();
     $tokenBefore = csrf_token();
@@ -115,7 +108,7 @@ it('logs out and invalidates the session', function (): void {
 });
 
 it('rejects logout via GET', function (): void {
-    $this->actingAs(adminUser())->get('/logout')->assertStatus(405);
+    $this->actingAs(Auth::admin())->get('/logout')->assertStatus(405);
 
     $this->assertAuthenticated();
 });
