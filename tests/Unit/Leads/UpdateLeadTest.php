@@ -47,11 +47,11 @@ it('dispatches LeadStatusChanged only when the status changes', function (): voi
 
     $action((int) $lead->id, new LeadData('Ada renamed', status: LeadStatus::Won));
     expect($log)->toHaveCount(3)
-        ->and($log[1])->toBeInstanceOf(LeadStatusChanged::class)
-        ->and($log[1]->from)->toBe(LeadStatus::New)
-        ->and($log[1]->to)->toBe(LeadStatus::Won)
-        ->and($log[1]->leadId)->toBe($lead->id)
-        ->and($log[2])->toBeInstanceOf(LeadUpdated::class);
+        ->and($log[1])->toBeInstanceOf(LeadUpdated::class)
+        ->and($log[2])->toBeInstanceOf(LeadStatusChanged::class)
+        ->and($log[2]->from)->toBe(LeadStatus::New)
+        ->and($log[2]->to)->toBe(LeadStatus::Won)
+        ->and($log[2]->leadId)->toBe($lead->id);
 });
 
 it('fails when the lead does not exist', function (): void {

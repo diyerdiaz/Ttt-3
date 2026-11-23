@@ -15,12 +15,12 @@ final class LeadActions
 {
     public static function create(InMemoryLeadStore $store, ?Dispatcher $events = null): CreateLead
     {
-        return new CreateLead($store, $store, new InlineTransactionManager($store), $events ?? new Dispatcher);
+        return new CreateLead($store, $store, new InlineTransactionManager($store), $events ?? self::dispatcher());
     }
 
     public static function update(InMemoryLeadStore $store, ?Dispatcher $events = null): UpdateLead
     {
-        return new UpdateLead($store, $store, new InlineTransactionManager($store), $events ?? new Dispatcher);
+        return new UpdateLead($store, $store, new InlineTransactionManager($store), $events ?? self::dispatcher());
     }
 
     /**
@@ -29,11 +29,19 @@ final class LeadActions
      */
     public static function recordingDispatcher(array $eventClasses, array &$log): Dispatcher
     {
-        $events = new Dispatcher;
-        $events->listen($eventClasses, static function (string $name, array $payload) use (&$log): void {
-            $log[] = $payload[0];
+        $events = self::dispatcher();
+        $events->listen($eventClasses, static function (object $event) use (&$log): void {
+            $log[] = $event;
         });
 
         return $events;
+    }
+
+    /**
+     * Outside a Laravel app there is no transaction manager, so events are dispatched immediately.
+     */
+    private static function dispatcher(): Dispatcher
+    {
+        return (new Dispatcher)->setTransactionManagerResolver(static fn (): null => null);
     }
 }
