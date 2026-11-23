@@ -44,3 +44,14 @@ it('falls back to the defaults when .env leaves a variable empty, as .env.exampl
         ->and(ConfigEnv::evaluate('auth', ['AUTH_TIMEBOX_DURATION' => ''])['timebox_duration'])->toBe(500000)
         ->and(ConfigEnv::evaluate('session', ['APP_ENV' => 'production', 'SESSION_SECURE_COOKIE' => ''])['secure'])->toBeTrue();
 });
+
+it('respects an explicit zero instead of treating it as unset', function (): void {
+    expect(ConfigEnv::evaluate('auth', ['AUTH_TIMEBOX_DURATION' => '0'])['timebox_duration'])->toBe(0)
+        ->and(ConfigEnv::evaluate('logging', ['SECURITY_LOG_DAYS' => '0'])['channels']['security']['days'])->toBe(0)
+        ->and(ConfigEnv::evaluate('hashing', ['BCRYPT_LIMIT' => '0'])['bcrypt']['limit'])->toBe(0)
+        ->and(ConfigEnv::evaluate('session', ['APP_ENV' => 'production', 'SESSION_SECURE_COOKIE' => 'false'])['secure'])->toBeFalse();
+});
+
+it('disables the authentication timebox in the test environment to keep the suite fast', function (): void {
+    expect(config('auth.timebox_duration'))->toBe(0);
+});
