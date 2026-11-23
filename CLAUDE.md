@@ -3,12 +3,12 @@
 Reglas globales de trabajo (TDD, SOLID, delegación, Conventional Commits): ver `~/.claude/CLAUDE.md`. Aplican íntegramente a este proyecto.
 
 ## Stack
-Laravel 13, PHP 8.5, PostgreSQL (BDs `crm` y `crm_test`, usuario `diyer`), Pest 4, Larastan nivel 8, Pint, Livewire 3 (+ Alpine), Tailwind 4 (Vite), SortableJS.
+Laravel 13, PHP 8.4+, PostgreSQL (BDs `crm` y `crm_test`, usuario `diyer`), Pest 4, Larastan nivel max, Pint, Livewire 4 (+ Alpine), Tailwind 4 (Vite), SortableJS.
 
 ## Comandos
 - `php artisan test` / `composer test` — tests (Pest, contra pgsql `crm_test`)
 - `./vendor/bin/pint --test` / `composer lint` — estilo (preset laravel + strict types)
-- `./vendor/bin/phpstan analyse` / `composer analyse` — análisis estático (nivel 8, `app/`)
+- `./vendor/bin/phpstan analyse` / `composer analyse` — análisis estático (nivel max: app, database, routes)
 - `composer check` — lint + analyse + test
 - `composer test:coverage` — `pest --coverage --min=85` (requiere pcov/xdebug, aún no instalado)
 - `npm run build` — compila assets con Vite
@@ -24,3 +24,4 @@ Laravel 13, PHP 8.5, PostgreSQL (BDs `crm` y `crm_test`, usuario `diyer`), Pest 
 - `declare(strict_types=1);` en todo el código (lo exige `tests/Arch/ArchitectureTest.php`).
 - Los tests de arquitectura viven en `tests/Arch`; los de feature usan `RefreshDatabase`.
 - Sin secretos en el repo: `.env` no se versiona, mantener `.env.example`.
+- Todos los modelos Eloquent viven en `app/Domain/<Contexto>/Models` (no existe `App\Models`). Los tests abortan si la BD no es `crm_test` (`tests/Support/TestDatabaseGuard.php`).
