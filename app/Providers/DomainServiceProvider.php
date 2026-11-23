@@ -8,8 +8,8 @@ use Illuminate\Support\ServiceProvider;
 
 final class DomainServiceProvider extends ServiceProvider
 {
-    public function register(): void
-    {
-        // Bindings interfaz -> implementación (repositorios) se añadirán aquí.
-    }
+    /**
+     * @var array<class-string, class-string>
+     */
+    public array $bindings = [];
 }
