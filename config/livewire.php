@@ -66,7 +66,7 @@ return [
 
     'make_command' => [
         'type' => 'class', // Solo componentes de clase: no se usan SFC ni MFC
-        'emoji' => true, // Options: true, false
+        'emoji' => false, // Options: true, false
         'with' => [
             'js' => false,
             'css' => false,
