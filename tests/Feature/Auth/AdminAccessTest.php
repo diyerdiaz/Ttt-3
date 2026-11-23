@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 use App\Domain\Identity\Models\User;
 use App\Http\Middleware\EnsureUserIsAdmin;
-use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Routing\Route as LaravelRoute;
 use Illuminate\Support\Facades\Auth as AuthFacade;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\Support\Accounts;
+use Tests\Support\RouteGuard;
 
 it('redirects guests from protected routes to login', function (): void {
     $this->get('/')->assertRedirect('/login');
@@ -74,37 +73,24 @@ it('does not expose registration or password reset routes', function (): void {
 });
 
 describe('route protection', function (): void {
-    /** Routes reachable without being an admin, by route name. */
-    $public = ['login', 'login.store', 'logout'];
-
-    $isFrameworkRoute = static fn (LaravelRoute $route): bool => $route->uri() === 'up'
-        || str_starts_with($route->uri(), 'livewire-');
-
-    it('puts every route except the public allowlist behind auth and admin', function () use ($public, $isFrameworkRoute): void {
-        $unprotected = collect(Route::getRoutes()->getRoutes())
-            ->reject(fn (LaravelRoute $route): bool => in_array($route->getName(), $public, true) || $isFrameworkRoute($route))
-            ->filter(function (LaravelRoute $route): bool {
-                $effective = app('router')->gatherRouteMiddleware($route);
-
-                return ! in_array(Authenticate::class, $effective, true)
-                    || ! in_array(EnsureUserIsAdmin::class, $effective, true);
-            })
-            ->map(fn (LaravelRoute $route): string => $route->methods()[0].' '.$route->uri());
-
-        expect($unprotected->all())->toBe([]);
+    it('puts every route except the public allowlist behind auth and admin', function (): void {
+        expect(RouteGuard::unprotected())->toBe([]);
     });
 
     it('does not let a route opt out of auth or admin', function (): void {
-        $optOuts = collect(Route::getRoutes()->getRoutes())
-            ->filter(fn (LaravelRoute $route): bool => array_intersect($route->excludedMiddleware(), ['auth', 'admin', Authenticate::class, EnsureUserIsAdmin::class]) !== [])
-            ->map(fn (LaravelRoute $route): string => $route->uri());
-
-        expect($optOuts->all())->toBe([]);
+        expect(RouteGuard::optOuts())->toBe([]);
     });
 
     it('detects a route that is missing the admin middleware', function (): void {
-        $route = Route::middleware(['web', 'auth'])->get('/leaky', static fn (): string => 'x');
+        Route::middleware(['web', 'auth'])->get('/leaky', static fn (): string => 'x');
 
-        expect(app('router')->gatherRouteMiddleware($route))->not->toContain(EnsureUserIsAdmin::class);
+        expect(RouteGuard::unprotected())->toBe(['GET /leaky']);
+    });
+
+    it('detects a route that opts out of admin', function (): void {
+        Route::middleware(['web', 'auth', 'admin'])->withoutMiddleware('admin')->get('/opt-out', static fn (): string => 'x');
+
+        expect(RouteGuard::optOuts())->toBe(['/opt-out'])
+            ->and(RouteGuard::unprotected())->toBe(['GET /opt-out']);
     });
 });
