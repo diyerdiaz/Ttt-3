@@ -2,34 +2,12 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Env;
-
-/**
- * @param  array<string, string|null>  $env
- */
-function configWith(string $file, array $env): array
-{
-    $repository = Env::getRepository();
-    $previous = [];
-
-    foreach ($env as $name => $value) {
-        $previous[$name] = $repository->get($name);
-        $value === null ? $repository->clear($name) : $repository->set($name, $value);
-    }
-
-    try {
-        return require config_path($file.'.php');
-    } finally {
-        foreach ($previous as $name => $value) {
-            $value === null ? $repository->clear($name) : $repository->set($name, $value);
-        }
-    }
-}
+use Tests\Support\ConfigEnv;
 
 it('sends the session cookie only over https in production by default', function (): void {
-    expect(configWith('session', ['APP_ENV' => 'production', 'SESSION_SECURE_COOKIE' => null])['secure'])->toBeTrue()
-        ->and(configWith('session', ['APP_ENV' => 'local', 'SESSION_SECURE_COOKIE' => null])['secure'])->toBeFalse()
-        ->and(configWith('session', ['APP_ENV' => 'production', 'SESSION_SECURE_COOKIE' => 'false'])['secure'])->toBeFalse();
+    expect(ConfigEnv::evaluate('session', ['APP_ENV' => 'production', 'SESSION_SECURE_COOKIE' => null])['secure'])->toBeTrue()
+        ->and(ConfigEnv::evaluate('session', ['APP_ENV' => 'local', 'SESSION_SECURE_COOKIE' => null])['secure'])->toBeFalse()
+        ->and(ConfigEnv::evaluate('session', ['APP_ENV' => 'production', 'SESSION_SECURE_COOKIE' => 'false'])['secure'])->toBeFalse();
 });
 
 it('keeps the session cookie http only and same-site lax', function (): void {
@@ -38,8 +16,8 @@ it('keeps the session cookie http only and same-site lax', function (): void {
 });
 
 it('uses a 500 ms timebox for authentication by default and allows overriding it', function (): void {
-    expect(configWith('auth', ['AUTH_TIMEBOX_DURATION' => null])['timebox_duration'])->toBe(500000)
-        ->and(configWith('auth', ['AUTH_TIMEBOX_DURATION' => '800000'])['timebox_duration'])->toBe(800000);
+    expect(ConfigEnv::evaluate('auth', ['AUTH_TIMEBOX_DURATION' => null])['timebox_duration'])->toBe(500000)
+        ->and(ConfigEnv::evaluate('auth', ['AUTH_TIMEBOX_DURATION' => '800000'])['timebox_duration'])->toBe(800000);
 });
 
 it('does not serve the local disk publicly', function (): void {
