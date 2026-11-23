@@ -6,8 +6,8 @@ namespace App\Http\Livewire\Leads;
 
 use App\Application\Leads\Actions\CreateLead;
 use App\Application\Leads\Actions\UpdateLead;
-use App\Domain\Identity\Abilities;
 use App\Domain\Leads\Contracts\LeadRepository;
+use App\Domain\Leads\Models\Lead;
 use App\Http\Livewire\Forms\LeadFormData;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
@@ -23,17 +23,22 @@ final class LeadForm extends Component
 
     public function mount(LeadRepository $leads, ?int $lead = null): void
     {
-        Gate::authorize(Abilities::ACCESS_ADMIN);
+        if ($lead === null) {
+            Gate::authorize('create', Lead::class);
 
-        if ($lead !== null) {
-            $this->leadId = $lead;
-            $this->form->fillFromLead($leads->findOrFail($lead));
+            return;
         }
+
+        $model = $leads->findOrFail($lead);
+        Gate::authorize('update', $model);
+
+        $this->leadId = $lead;
+        $this->form->fillFromLead($model);
     }
 
-    public function save(CreateLead $create, UpdateLead $update): void
+    public function save(CreateLead $create, UpdateLead $update, LeadRepository $leads): void
     {
-        Gate::authorize(Abilities::ACCESS_ADMIN);
+        Gate::authorize($this->leadId === null ? 'create' : 'update', $this->leadId === null ? Lead::class : $leads->findOrFail($this->leadId));
 
         $this->form->trimInputs();
         $this->form->validate();

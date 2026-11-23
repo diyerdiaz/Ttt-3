@@ -5,9 +5,9 @@ declare(strict_types=1);
 use App\Domain\Identity\Abilities;
 use App\Domain\Leads\Models\Lead;
 use App\Domain\Leads\Policies\LeadPolicy;
-use Illuminate\Support\Facades\Gate;
 use App\Http\Livewire\Leads\LeadForm;
 use App\Http\Livewire\Leads\LeadIndex;
+use Illuminate\Support\Facades\Gate;
 use Livewire\Livewire;
 use Tests\Support\Accounts;
 

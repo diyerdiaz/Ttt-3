@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Livewire\Leads;
 
-use App\Domain\Identity\Abilities;
 use App\Domain\Leads\Contracts\LeadRepository;
+use App\Domain\Leads\Models\Lead;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Url;
@@ -25,7 +25,7 @@ final class LeadIndex extends Component
 
     public function mount(): void
     {
-        Gate::authorize(Abilities::ACCESS_ADMIN);
+        Gate::authorize('viewAny', Lead::class);
     }
 
     public function updatingSearch(): void
@@ -35,7 +35,7 @@ final class LeadIndex extends Component
 
     public function render(LeadRepository $leads): View
     {
-        Gate::authorize(Abilities::ACCESS_ADMIN);
+        Gate::authorize('viewAny', Lead::class);
 
         return view('livewire.leads.lead-index', [
             'leads' => $leads->search(mb_substr($this->search, 0, self::MAX_SEARCH_LENGTH), self::PER_PAGE),
