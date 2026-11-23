@@ -20,6 +20,13 @@ final class LeadShow extends Component
     #[Locked]
     public int $leadId;
 
+    private LeadRepository $leads;
+
+    public function boot(LeadRepository $leads): void
+    {
+        $this->leads = $leads;
+    }
+
     public function mount(int $lead): void
     {
         $this->leadId = $lead;
@@ -28,7 +35,7 @@ final class LeadShow extends Component
     #[Computed]
     public function lead(): Lead
     {
-        $lead = app(LeadRepository::class)->findOrFail($this->leadId);
+        $lead = $this->leads->findOrFail($this->leadId);
         Gate::authorize('view', $lead);
 
         return $lead;

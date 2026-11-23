@@ -10,8 +10,9 @@ use InvalidArgumentException;
 
 /**
  * What the user records about a contact with a lead. It lives in Domain because the repository
- * contract accepts it and Domain must not depend on Application. Cleaning of text coming from
- * the browser happens at the HTTP edge; here only the invariants are enforced.
+ * contract accepts it and Domain must not depend on Application. The browser text is cleaned at
+ * the HTTP edge (`TextInput::multiLine`); the VO rejects whatever that cleaning would have removed,
+ * so no other entry point can store invalid UTF-8 or control characters.
  */
 final readonly class ActivityData
 {
@@ -30,8 +31,8 @@ final readonly class ActivityData
             throw new InvalidArgumentException('The activity description must not exceed '.self::DESCRIPTION_MAX_LENGTH.' characters.');
         }
 
-        if (str_contains($description, "\0")) {
-            throw new InvalidArgumentException('The activity description must not contain NUL bytes.');
+        if (! mb_check_encoding($description, 'UTF-8') || preg_match('/[^\P{Cc}\n\t]/u', $description) === 1) {
+            throw new InvalidArgumentException('The activity description must be clean UTF-8 text without control characters.');
         }
     }
 }
