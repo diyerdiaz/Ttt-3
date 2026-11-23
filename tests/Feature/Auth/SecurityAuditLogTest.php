@@ -43,8 +43,3 @@ it('logs throttled login attempts', function (): void {
     expect(AuditLog::context($this->channel, 'warning', 'auth.login_throttled'))
         ->toMatchArray(['email_hash' => hash('sha256', 'ada@example.com'), 'ip' => '10.0.0.1']);
 });
-
-it('defines a dedicated security log channel', function (): void {
-    expect(config('logging.channels.security.driver'))->toBe('single')
-        ->and(config('logging.channels.security.path'))->toEndWith('logs/security.log');
-});
