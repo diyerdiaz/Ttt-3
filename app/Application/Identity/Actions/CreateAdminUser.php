@@ -12,6 +12,7 @@ use App\Domain\Identity\Models\User;
 use Illuminate\Contracts\Hashing\Hasher;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
+use InvalidArgumentException;
 
 final readonly class CreateAdminUser
 {
@@ -21,6 +22,16 @@ final readonly class CreateAdminUser
         private UserRepository $users,
         private Hasher $hasher,
     ) {}
+
+    private function hash(string $plainPassword): string
+    {
+        try {
+            return $this->hasher->make($plainPassword);
+        } catch (InvalidArgumentException) {
+            // bcrypt only reads 72 bytes; a multibyte password can pass the character limit and still exceed it.
+            throw WeakPassword::create();
+        }
+    }
 
     /**
      * @throws WeakPassword
@@ -36,10 +47,6 @@ final readonly class CreateAdminUser
             throw EmailAlreadyTaken::withEmail($data->email);
         }
 
-        return $this->users->createAdmin(
-            $data->name,
-            $data->email,
-            $this->hasher->make($data->plainPassword),
-        );
+        return $this->users->createAdmin($data->name, $data->email, $this->hash($data->plainPassword));
     }
 }

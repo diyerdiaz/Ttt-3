@@ -10,6 +10,6 @@ final class WeakPassword extends RuntimeException
 {
     public static function create(): self
     {
-        return new self('La contraseña no cumple los requisitos (entre 12 y 72 caracteres).');
+        return new self('La contraseña no es válida: debe tener entre 12 y 72 caracteres y no figurar en filtraciones conocidas.');
     }
 }
