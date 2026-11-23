@@ -46,16 +46,16 @@ it('registers the admin middleware alias', function (): void {
 it('lets an admin through the middleware and rejects guests and non-admins with 403', function (): void {
     $middleware = new EnsureUserIsAdmin;
     $next = static fn (): Response => response('ok');
-    $request = Request::create('/');
+    $forbidden = static fn () => $middleware->handle(Request::create('/'), $next);
 
-    $request->setUserResolver(static fn (): User => User::factory()->admin()->make());
-    expect($middleware->handle($request, $next)->getContent())->toBe('ok');
+    $this->actingAs(User::factory()->admin()->make());
+    expect($middleware->handle(Request::create('/'), $next)->getContent())->toBe('ok');
 
-    $request->setUserResolver(static fn (): User => User::factory()->make());
-    expect(fn () => $middleware->handle($request, $next))->toThrow(HttpException::class);
+    $this->actingAs(User::factory()->make());
+    expect($forbidden)->toThrow(HttpException::class);
 
-    $request->setUserResolver(static fn (): null => null);
-    expect(fn () => $middleware->handle($request, $next))->toThrow(HttpException::class);
+    Auth::logout();
+    expect($forbidden)->toThrow(HttpException::class);
 });
 
 it('adds no queries beyond loading the user on an authenticated dashboard request', function (): void {

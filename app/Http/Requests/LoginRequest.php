@@ -1,0 +1,41 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Requests;
+
+use App\Http\RateLimiting\LoginRateLimiter;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\ValidationException;
+
+final class LoginRequest extends FormRequest
+{
+    public const string INVALID_CREDENTIALS = 'Credenciales inválidas';
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public function rules(): array
+    {
+        return [
+            'email' => ['required', 'string'],
+            'password' => ['required', 'string'],
+        ];
+    }
+
+    public function authenticate(): void
+    {
+        $authenticated = Auth::attempt([
+            'email' => mb_strtolower(trim($this->string('email')->toString())),
+            'password' => $this->string('password')->toString(),
+            'is_admin' => true,
+        ]);
+
+        if (! $authenticated) {
+            throw ValidationException::withMessages(['email' => self::INVALID_CREDENTIALS]);
+        }
+
+        LoginRateLimiter::clear($this);
+    }
+}

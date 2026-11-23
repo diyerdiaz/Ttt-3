@@ -54,9 +54,9 @@ final class CreateAdminCommand extends Command
 
     private function askPassword(): ?string
     {
-        $password = (string) $this->secret('Contraseña');
+        $password = $this->secretAnswer('Contraseña');
 
-        if ($password !== (string) $this->secret('Confirma la contraseña')) {
+        if ($password !== $this->secretAnswer('Confirma la contraseña')) {
             $this->components->error('Las contraseñas no coinciden.');
 
             return null;
@@ -71,5 +71,12 @@ final class CreateAdminCommand extends Command
         }
 
         return $password;
+    }
+
+    private function secretAnswer(string $question): string
+    {
+        $answer = $this->secret($question);
+
+        return is_string($answer) ? $answer : '';
     }
 }
