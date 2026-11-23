@@ -19,7 +19,7 @@ it('lets admins do everything with leads', function (string $ability): void {
     $subject = in_array($ability, ['viewAny', 'create'], true) ? Lead::class : Lead::factory()->make();
 
     expect(Gate::forUser(Accounts::admin())->allows($ability, $subject))->toBeTrue();
-})->with(['viewAny', 'create', 'view', 'update']);
+})->with(['viewAny', 'create', 'view', 'update', 'move']);
 
 it('denies every ability to non-admins and guests', function (string $ability): void {
     $lead = Lead::factory()->make();
@@ -27,7 +27,7 @@ it('denies every ability to non-admins and guests', function (string $ability): 
 
     expect(Gate::forUser(Accounts::user())->allows($ability, $subject))->toBeFalse()
         ->and(Gate::forUser(null)->allows($ability, $subject))->toBeFalse();
-})->with(['viewAny', 'create', 'view', 'update']);
+})->with(['viewAny', 'create', 'view', 'update', 'move']);
 
 it('delegates to the access-admin ability instead of duplicating the rule', function (): void {
     $admin = Accounts::admin();

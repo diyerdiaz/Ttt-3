@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Support;
 
 use App\Application\Leads\Actions\CreateLead;
+use App\Application\Leads\Actions\MoveLead;
 use App\Application\Leads\Actions\UpdateLead;
 use Illuminate\Events\Dispatcher;
 
@@ -21,6 +22,11 @@ final class LeadActions
     public static function update(InMemoryLeadStore $store, ?Dispatcher $events = null): UpdateLead
     {
         return new UpdateLead($store, $store, new InlineTransactionManager($store), $events ?? self::dispatcher());
+    }
+
+    public static function move(InMemoryLeadStore $store, ?Dispatcher $events = null): MoveLead
+    {
+        return new MoveLead($store, new InlineTransactionManager($store), $events ?? self::dispatcher());
     }
 
     /**

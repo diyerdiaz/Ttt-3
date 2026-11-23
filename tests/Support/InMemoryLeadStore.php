@@ -41,6 +41,41 @@ final class InMemoryLeadStore implements LeadBoardRepository, LeadRepository
         $this->calls[] = 'lock';
     }
 
+    public function columns(): array
+    {
+        $columns = [];
+
+        foreach (LeadStatus::boardOrder() as $status) {
+            $inColumn = array_values(array_filter($this->leads, static fn (Lead $lead): bool => $lead->status === $status));
+            usort($inColumn, static fn (Lead $a, Lead $b): int => $a->position <=> $b->position);
+            $columns[$status->value] = $inColumn;
+        }
+
+        return $columns;
+    }
+
+    public function findForUpdate(int $id): Lead
+    {
+        $this->calls[] = "find-for-update:{$id}";
+
+        return $this->findOrFail($id);
+    }
+
+    public function idsInColumn(LeadStatus $status): array
+    {
+        return array_map(static fn (Lead $lead): int => (int) $lead->id, $this->columns()[$status->value]);
+    }
+
+    public function placeColumn(LeadStatus $status, array $orderedIds): void
+    {
+        $this->calls[] = "place:{$status->value}:".implode(',', $orderedIds);
+
+        foreach (array_values($orderedIds) as $index => $id) {
+            $this->leads[$id]->status = $status;
+            $this->leads[$id]->position = $index;
+        }
+    }
+
     public function find(int $id): ?Lead
     {
         return $this->leads[$id] ?? null;
