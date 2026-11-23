@@ -23,6 +23,17 @@ final readonly class CreateAdminUser
         private Hasher $hasher,
     ) {}
 
+    private function isBlank(string $plainPassword): bool
+    {
+        return preg_match('/\A[\s\p{Z}]*\z/u', $plainPassword) === 1;
+    }
+
+    private function violatesPolicy(string $plainPassword): bool
+    {
+        // Without `required`, Laravel skips non-implicit rules such as Password for empty or whitespace-only values.
+        return Validator::make(['password' => $plainPassword], ['password' => ['required', Password::default()]])->fails();
+    }
+
     private function hash(string $plainPassword): string
     {
         try {
@@ -39,7 +50,7 @@ final readonly class CreateAdminUser
      */
     public function __invoke(NewUserData $data): User
     {
-        if (Validator::make(['password' => $data->plainPassword], ['password' => Password::default()])->fails()) {
+        if ($this->isBlank($data->plainPassword) || $this->violatesPolicy($data->plainPassword)) {
             throw WeakPassword::create();
         }
 

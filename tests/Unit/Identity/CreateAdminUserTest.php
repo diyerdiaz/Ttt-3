@@ -56,3 +56,21 @@ it('accepts passwords between 12 and 72 characters', function (string $password)
 
     expect($action(new NewUserData('Ada', EmailAddress::fromString('ada@example.com'), $password)))->toBeInstanceOf(User::class);
 })->with([str_repeat('a', 12), str_repeat('a', 72)]);
+
+it('rejects an empty or blank password even when it reaches the minimum length', function (string $password): void {
+    $repository = new InMemoryUserRepository;
+    $action = new CreateAdminUser($repository, new BcryptHasher(['rounds' => 4]));
+
+    try {
+        $action(new NewUserData('Ada', EmailAddress::fromString('ada@example.com'), $password));
+    } finally {
+        expect($repository->users)->toBe([]);
+    }
+})->with([
+    'empty (what a missing answer becomes)' => [''],
+    'single space' => [' '],
+    'tab and newline' => ["\t\n"],
+    'twelve spaces' => [str_repeat(' ', 12)],
+    'twelve no-break spaces' => [str_repeat("\u{00A0}", 12)],
+    'twelve ideographic spaces' => [str_repeat("\u{3000}", 12)],
+])->throws(WeakPassword::class);

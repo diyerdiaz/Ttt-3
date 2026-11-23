@@ -76,3 +76,24 @@ it('rejects a name longer than 120 characters before asking for a password', fun
 
     expect(User::query()->count())->toBe(0);
 });
+
+it('fails without asking for a password when there is no interactive terminal', function (): void {
+    $this->artisan('crm:create-admin', ['email' => 'ada@example.com', '--no-interaction' => true])
+        ->expectsOutputToContain('terminal interactiva')
+        ->assertFailed();
+
+    expect(User::query()->count())->toBe(0);
+});
+
+it('fails without creating anything when the password answer is empty', function (?string $answer): void {
+    $this->artisan('crm:create-admin', ['email' => 'ada@example.com'])
+        ->expectsQuestion('Contraseña', $answer)
+        ->expectsOutputToContain('no puede estar vacía')
+        ->assertFailed();
+
+    expect(User::query()->count())->toBe(0);
+})->with([
+    'no answer' => [null],
+    'empty' => [''],
+    'blank' => ['   '],
+]);
