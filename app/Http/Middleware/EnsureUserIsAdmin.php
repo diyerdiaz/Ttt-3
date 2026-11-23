@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Domain\Identity\Abilities;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -16,7 +17,7 @@ final class EnsureUserIsAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
-        abort_unless(Gate::allows('access-admin'), Response::HTTP_FORBIDDEN);
+        abort_unless(Gate::allows(Abilities::ACCESS_ADMIN), Response::HTTP_FORBIDDEN);
 
         return $next($request);
     }

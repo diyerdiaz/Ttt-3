@@ -6,6 +6,7 @@ use App\Application\Identity\Actions\CreateAdminUser;
 use App\Application\Identity\DTOs\NewUserData;
 use App\Domain\Identity\Exceptions\EmailAlreadyTaken;
 use App\Domain\Identity\Exceptions\WeakPassword;
+use App\Domain\Identity\Models\User;
 use App\Domain\Shared\ValueObjects\EmailAddress;
 use Illuminate\Hashing\BcryptHasher;
 use Tests\Support\InMemoryUserRepository;
