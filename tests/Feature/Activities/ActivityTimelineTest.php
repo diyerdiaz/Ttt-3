@@ -33,14 +33,15 @@ it('logs an activity from the lead page', function (): void {
         ->assertHasNoErrors()
         ->assertSee('Demo of the product')
         ->assertSee('Reunión')
-        ->assertSee('20/11/2026 10:30');
+        ->assertSee('20/11/2026 10:30')
+        ->assertDontSee('20/11/2026 15:30');
 
     $activity = Activity::query()->sole();
 
     expect($activity->lead_id)->toBe($this->lead->id)
         ->and($activity->type)->toBe(ActivityType::Meeting)
         ->and($activity->description)->toBe('Demo of the product')
-        ->and($activity->occurred_at->format('Y-m-d H:i:s'))->toBe('2026-11-20 10:30:00')
+        ->and($activity->occurred_at->format('Y-m-d H:i:s'))->toBe('2026-11-20 15:30:00')
         ->and($logged)->toHaveCount(1)
         ->and($logged[0]->activityId)->toBe($activity->id)
         ->and($logged[0]->leadId)->toBe($this->lead->id);
@@ -48,7 +49,7 @@ it('logs an activity from the lead page', function (): void {
 
 it('defaults the moment to now and clears the form after saving', function (): void {
     TimelineComponent::open($this->lead)
-        ->assertSet('occurredAt', '2026-11-23T12:00')
+        ->assertSet('occurredAt', '2026-11-23T07:00')
         ->assertSet('type', '')
         ->set('description', 'Quick note')
         ->set('occurredAt', '2026-11-01T08:00')
@@ -56,7 +57,20 @@ it('defaults the moment to now and clears the form after saving', function (): v
         ->assertHasNoErrors()
         ->assertSet('description', '')
         ->assertSet('type', '')
-        ->assertSet('occurredAt', '2026-11-23T12:00');
+        ->assertSet('occurredAt', '2026-11-23T07:00');
+});
+
+it('stores a local Colombian moment as UTC', function (): void {
+    TimelineComponent::open($this->lead)->set('description', 'Call')->set('occurredAt', '2026-11-23T10:00')->call('save')->assertHasNoErrors();
+
+    expect(Activity::query()->sole()->occurred_at->utc()->format('Y-m-d H:i:s'))->toBe('2026-11-23 15:00:00');
+});
+
+it('shows a moment stored at 15:00 UTC as 10:00 in Colombia', function (): void {
+    Activity::factory()->for($this->lead)->create(['description' => 'Stored in UTC', 'occurred_at' => '2026-11-20 15:00:00']);
+
+    TimelineComponent::open($this->lead)->assertSee('20/11/2026 10:00')->assertDontSee('20/11/2026 15:00')
+        ->assertSeeHtml('datetime="2026-11-20T10:00:00-05:00"');
 });
 
 it('accepts an activity without type', function (): void {
@@ -108,13 +122,13 @@ it('validates occurred_at as a date', function (string $value): void {
 ]);
 
 it('validates occurred_at as a date not far in the future', function (): void {
-    TimelineComponent::open($this->lead)->set('description', 'x')->set('occurredAt', '2026-11-24T12:01')->call('save')->assertHasErrors(['occurredAt' => 'before_or_equal']);
+    TimelineComponent::open($this->lead)->set('description', 'x')->set('occurredAt', '2026-11-24T07:01')->call('save')->assertHasErrors(['occurredAt' => 'before_or_equal']);
 
     expect(Activity::query()->count())->toBe(0);
 });
 
 it('accepts a moment up to one day in the future', function (): void {
-    TimelineComponent::open($this->lead)->set('description', 'Scheduled')->set('occurredAt', '2026-11-24T12:00')->call('save')->assertHasNoErrors();
+    TimelineComponent::open($this->lead)->set('description', 'Scheduled')->set('occurredAt', '2026-11-24T07:00')->call('save')->assertHasNoErrors();
 
     expect(Activity::query()->count())->toBe(1);
 });

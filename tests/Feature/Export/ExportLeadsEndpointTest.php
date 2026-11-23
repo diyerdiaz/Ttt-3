@@ -20,7 +20,7 @@ it('downloads a streamed csv with attachment headers', function (): void {
 
     $response->assertOk()
         ->assertHeader('Content-Type', 'text/csv; charset=utf-8')
-        ->assertHeader('Content-Disposition', 'attachment; filename=leads-20261123-140509.csv')
+        ->assertHeader('Content-Disposition', 'attachment; filename=leads-20261123-090509.csv')
         ->assertHeader('X-Content-Type-Options', 'nosniff');
     expect($response->baseResponse)->toBeInstanceOf(StreamedResponse::class)
         ->and($response->headers->get('Cache-Control'))->toContain('no-store')

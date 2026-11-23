@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Infrastructure\Support\Env;
+
 return [
 
     /*
@@ -68,6 +70,19 @@ return [
     */
 
     'timezone' => 'UTC',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Display Timezone
+    |--------------------------------------------------------------------------
+    |
+    | Dates are stored in UTC ("timezone" above and the pgsql connection) and are
+    | shown to and entered by users in this zone. Always go through
+    | App\Domain\Shared\ValueObjects\DisplayTimezone instead of reading it directly.
+    |
+    */
+
+    'display_timezone' => Env::timezone('APP_DISPLAY_TIMEZONE', 'America/Bogota'),
 
     /*
     |--------------------------------------------------------------------------
