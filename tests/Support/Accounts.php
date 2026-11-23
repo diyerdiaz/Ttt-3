@@ -12,7 +12,7 @@ use Tests\TestCase;
 /**
  * Shared fixtures for tests that need accounts; reused by every feature branch.
  */
-final class Auth
+final class Accounts
 {
     /** Satisfies Password::defaults() (min 12). The single strong password used across tests. */
     public const string STRONG_PASSWORD = 'correct-horse-battery';

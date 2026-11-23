@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Tests\Support\Auth;
+use Tests\Support\Accounts;
 
 it('sends hardening headers on the login page', function (): void {
     $this->get('/login')
@@ -15,7 +15,7 @@ it('sends hardening headers on the login page', function (): void {
 it('sends hardening headers on protected pages and redirects', function (): void {
     $this->get('/')->assertRedirect('/login')->assertHeader('X-Frame-Options', 'DENY');
 
-    $this->actingAs(Auth::admin())->get('/')
+    $this->actingAs(Accounts::admin())->get('/')
         ->assertOk()
         ->assertHeader('X-Frame-Options', 'DENY')
         ->assertHeader('Content-Security-Policy', "frame-ancestors 'none'")

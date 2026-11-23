@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
-use Tests\Support\Auth;
+use Tests\Support\Accounts;
 
 it('shows the login form to guests', function (): void {
     $this->get('/login')
@@ -16,17 +16,17 @@ it('shows the login form to guests', function (): void {
 });
 
 it('redirects authenticated users away from the login form', function (): void {
-    $this->actingAs(Auth::admin())->get('/login')->assertRedirect('/');
+    $this->actingAs(Accounts::admin())->get('/login')->assertRedirect('/');
 });
 
 it('logs in an admin with valid credentials and regenerates the session', function (): void {
-    Auth::admin();
+    Accounts::admin();
 
     $this->startSession();
     $before = session()->getId();
     $token = csrf_token();
 
-    $this->post('/login', ['_token' => $token, 'email' => 'ada@example.com', 'password' => Auth::STRONG_PASSWORD])
+    $this->post('/login', ['_token' => $token, 'email' => 'ada@example.com', 'password' => Accounts::STRONG_PASSWORD])
         ->assertRedirect('/');
 
     $this->assertAuthenticated();
@@ -35,28 +35,28 @@ it('logs in an admin with valid credentials and regenerates the session', functi
 
 it('redirects to the intended url after login', function (): void {
     Route::middleware(['web', 'auth', 'admin'])->get('/x', static fn (): string => 'protected');
-    Auth::admin();
+    Accounts::admin();
 
     $this->get('/x')->assertRedirect('/login');
-    $this->post('/login', ['email' => 'ada@example.com', 'password' => Auth::STRONG_PASSWORD])->assertRedirect('/x');
+    $this->post('/login', ['email' => 'ada@example.com', 'password' => Accounts::STRONG_PASSWORD])->assertRedirect('/x');
 });
 
 it('treats the email case-insensitively when authenticating', function (): void {
-    Auth::admin('ada@example.com');
+    Accounts::admin('ada@example.com');
 
-    $this->post('/login', ['email' => '  ADA@Example.COM ', 'password' => Auth::STRONG_PASSWORD])
+    $this->post('/login', ['email' => '  ADA@Example.COM ', 'password' => Accounts::STRONG_PASSWORD])
         ->assertRedirect('/');
 
     $this->assertAuthenticated();
 });
 
 it('rejects invalid credentials with a generic error', function (): void {
-    Auth::admin();
+    Accounts::admin();
 
     $this->from('/login')
-        ->post('/login', ['email' => 'ada@example.com', 'password' => Auth::WRONG_PASSWORD])
+        ->post('/login', ['email' => 'ada@example.com', 'password' => Accounts::WRONG_PASSWORD])
         ->assertRedirect('/login')
-        ->assertSessionHasErrors(['email' => Auth::GENERIC_ERROR])
+        ->assertSessionHasErrors(['email' => Accounts::GENERIC_ERROR])
         ->assertSessionHasInput('email', 'ada@example.com')
         ->assertSessionMissing('_old_input.password');
 
@@ -64,24 +64,24 @@ it('rejects invalid credentials with a generic error', function (): void {
 });
 
 it('does not reveal whether a user exists', function (): void {
-    Auth::admin();
+    Accounts::admin();
 
-    $wrongPassword = $this->post('/login', ['email' => 'ada@example.com', 'password' => Auth::WRONG_PASSWORD])
+    $wrongPassword = $this->post('/login', ['email' => 'ada@example.com', 'password' => Accounts::WRONG_PASSWORD])
         ->assertSessionHasErrors('email');
     $messageForKnown = session('errors')->first('email');
 
-    $this->post('/login', ['email' => 'nobody@example.com', 'password' => Auth::WRONG_PASSWORD])
+    $this->post('/login', ['email' => 'nobody@example.com', 'password' => Accounts::WRONG_PASSWORD])
         ->assertSessionHasErrors('email');
 
-    expect(session('errors')->first('email'))->toBe($messageForKnown)->toBe(Auth::GENERIC_ERROR);
+    expect(session('errors')->first('email'))->toBe($messageForKnown)->toBe(Accounts::GENERIC_ERROR);
     $wrongPassword->assertRedirect();
 });
 
 it('rejects a non-admin user with valid credentials without creating a session', function (): void {
-    Auth::user('user@example.com');
+    Accounts::user('user@example.com');
 
-    $this->post('/login', ['email' => 'user@example.com', 'password' => Auth::STRONG_PASSWORD])
-        ->assertSessionHasErrors(['email' => Auth::GENERIC_ERROR]);
+    $this->post('/login', ['email' => 'user@example.com', 'password' => Accounts::STRONG_PASSWORD])
+        ->assertSessionHasErrors(['email' => Accounts::GENERIC_ERROR]);
 
     $this->assertGuest();
 });
@@ -98,7 +98,7 @@ it('validates that email and password are present', function (array $payload, st
 ]);
 
 it('logs out and invalidates the session', function (): void {
-    $this->actingAs(Auth::admin())->startSession();
+    $this->actingAs(Accounts::admin())->startSession();
     session()->put('marker', 'value');
     $before = session()->getId();
     $tokenBefore = csrf_token();
@@ -112,7 +112,7 @@ it('logs out and invalidates the session', function (): void {
 });
 
 it('rejects logout via GET', function (): void {
-    $this->actingAs(Auth::admin())->get('/logout')->assertStatus(405);
+    $this->actingAs(Accounts::admin())->get('/logout')->assertStatus(405);
 
     $this->assertAuthenticated();
 });
@@ -122,9 +122,9 @@ it('redirects guests posting to logout to the login form', function (): void {
 });
 
 it('authenticates a user stored with a mixed-case email', function (): void {
-    DB::table('users')->insert(['name' => 'Raw', 'email' => 'Mixed@Example.com', 'password' => Hash::make(Auth::STRONG_PASSWORD), 'is_admin' => true]);
+    DB::table('users')->insert(['name' => 'Raw', 'email' => 'Mixed@Example.com', 'password' => Hash::make(Accounts::STRONG_PASSWORD), 'is_admin' => true]);
 
-    $this->post('/login', ['email' => 'mixed@example.com', 'password' => Auth::STRONG_PASSWORD])->assertRedirect('/');
+    $this->post('/login', ['email' => 'mixed@example.com', 'password' => Accounts::STRONG_PASSWORD])->assertRedirect('/');
 
     $this->assertAuthenticated();
 });

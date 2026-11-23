@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 use App\Domain\Identity\Models\User;
 use Illuminate\Support\Facades\Hash;
-use Tests\Support\Auth;
+use Tests\Support\Accounts;
 
 it('creates an admin via the crm:create-admin command', function (): void {
     $this->artisan('crm:create-admin', ['email' => 'Ada@Example.com', '--name' => 'Ada'])
-        ->expectsQuestion('Contraseña', Auth::STRONG_PASSWORD)
-        ->expectsQuestion('Confirma la contraseña', Auth::STRONG_PASSWORD)
+        ->expectsQuestion('Contraseña', Accounts::STRONG_PASSWORD)
+        ->expectsQuestion('Confirma la contraseña', Accounts::STRONG_PASSWORD)
         ->expectsOutputToContain('ada@example.com')
         ->assertSuccessful();
 
@@ -17,13 +17,13 @@ it('creates an admin via the crm:create-admin command', function (): void {
 
     expect($user->isAdmin())->toBeTrue()
         ->and($user->name)->toBe('Ada')
-        ->and(Hash::check(Auth::STRONG_PASSWORD, $user->password))->toBeTrue();
+        ->and(Hash::check(Accounts::STRONG_PASSWORD, $user->password))->toBeTrue();
 });
 
 it('uses a default name when none is given', function (): void {
     $this->artisan('crm:create-admin', ['email' => 'ada@example.com'])
-        ->expectsQuestion('Contraseña', Auth::STRONG_PASSWORD)
-        ->expectsQuestion('Confirma la contraseña', Auth::STRONG_PASSWORD)
+        ->expectsQuestion('Contraseña', Accounts::STRONG_PASSWORD)
+        ->expectsQuestion('Confirma la contraseña', Accounts::STRONG_PASSWORD)
         ->assertSuccessful();
 
     expect(User::query()->firstOrFail()->name)->toBe('Admin');
@@ -41,7 +41,7 @@ it('fails the command with a weak password', function (): void {
 
 it('fails the command when the confirmation does not match', function (): void {
     $this->artisan('crm:create-admin', ['email' => 'ada@example.com'])
-        ->expectsQuestion('Contraseña', Auth::STRONG_PASSWORD)
+        ->expectsQuestion('Contraseña', Accounts::STRONG_PASSWORD)
         ->expectsQuestion('Confirma la contraseña', 'something-else-entirely')
         ->expectsOutputToContain('no coinciden')
         ->assertFailed();
@@ -61,8 +61,8 @@ it('rejects a duplicate email regardless of case with a clear error', function (
     User::factory()->create(['email' => 'ada@example.com']);
 
     $this->artisan('crm:create-admin', ['email' => 'ADA@example.com'])
-        ->expectsQuestion('Contraseña', Auth::STRONG_PASSWORD)
-        ->expectsQuestion('Confirma la contraseña', Auth::STRONG_PASSWORD)
+        ->expectsQuestion('Contraseña', Accounts::STRONG_PASSWORD)
+        ->expectsQuestion('Confirma la contraseña', Accounts::STRONG_PASSWORD)
         ->expectsOutputToContain('Ya existe un usuario')
         ->assertFailed();
 

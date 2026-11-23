@@ -1,7 +1,7 @@
 <?php
 
 declare(strict_types=1);
-use Tests\Support\Auth;
+use Tests\Support\Accounts;
 
 it('rejects a login post without a CSRF token once the testing bypass is off', function (): void {
     $this->withCsrfEnforced();
@@ -10,7 +10,7 @@ it('rejects a login post without a CSRF token once the testing bypass is off', f
 });
 
 it('rejects a logout post without a CSRF token once the testing bypass is off', function (): void {
-    $this->withCsrfEnforced()->actingAs(Auth::admin());
+    $this->withCsrfEnforced()->actingAs(Accounts::admin());
 
     $this->post('/logout')->assertStatus(419);
 });

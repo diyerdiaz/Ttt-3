@@ -41,7 +41,7 @@ Laravel 13, PHP 8.4+, PostgreSQL (BDs `crm` y `crm_test`, usuario `diyer`), Pest
 
 ## Soporte de tests (`tests/Support`) — reutilízalo, no dupliques
 - Prohibido definir funciones o constantes globales en archivos de test (colisionan entre archivos y ramas). Los helpers van en clases de `tests/Support`.
-- `Tests\Support\Auth`: `admin($email)`, `user($email)`, `STRONG_PASSWORD` (única contraseña válida para `Password::defaults()`), `WRONG_PASSWORD`, `GENERIC_ERROR`, `attemptLogin($test, $email, $password, $ip)`.
+- `Tests\Support\Accounts`: `admin($email)`, `user($email)`, `STRONG_PASSWORD` (única contraseña válida para `Password::defaults()`), `WRONG_PASSWORD`, `GENERIC_ERROR`, `attemptLogin($test, $email, $password, $ip)`.
 - `Tests\Support\InMemoryUserRepository`: fake del contrato para tests unitarios de Actions.
 - `Tests\Support\ConfigEnv::evaluate($file, $env)`: evalúa un fichero de `config/` con variables de entorno temporales.
 - `Tests\Support\AuditLog::context($channel, $level, $message)`: recupera el contexto de un log espiado.

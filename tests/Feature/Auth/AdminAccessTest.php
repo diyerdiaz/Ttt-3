@@ -13,18 +13,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Symfony\Component\HttpKernel\Exception\HttpException;
-use Tests\Support\Auth;
+use Tests\Support\Accounts;
 
 it('redirects guests from protected routes to login', function (): void {
     $this->get('/')->assertRedirect('/login');
 });
 
 it('forbids authenticated non-admin users', function (): void {
-    $this->actingAs(Auth::user())->get('/')->assertForbidden();
+    $this->actingAs(Accounts::user())->get('/')->assertForbidden();
 });
 
 it('shows the dashboard placeholder to admins', function (): void {
-    $this->actingAs(Auth::admin())
+    $this->actingAs(Accounts::admin())
         ->get('/')
         ->assertOk()
         ->assertSee('Leads')
@@ -54,7 +54,7 @@ it('lets an admin through the middleware and rejects guests and non-admins with 
 });
 
 it('adds no queries beyond loading the user on an authenticated dashboard request', function (): void {
-    $admin = Auth::admin();
+    $admin = Accounts::admin();
 
     // The test session driver is "array", so the only query is the user lookup; with the
     // database driver in production the session read/write add their own, independent of the admin check.
