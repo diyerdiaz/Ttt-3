@@ -6,9 +6,8 @@ use Tests\Support\TestDatabaseGuard;
 use Tests\TestCase;
 
 it('accepts the testing environment with the crm_test database', function (): void {
-    TestDatabaseGuard::assertSafe('testing', 'crm_test');
-
-    expect(true)->toBeTrue();
+    expect(fn () => TestDatabaseGuard::assertSafe('testing', 'crm_test'))
+        ->not->toThrow(RuntimeException::class);
 });
 
 it('aborts when the database is not crm_test', function (string $database): void {
