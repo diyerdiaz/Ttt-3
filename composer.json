@@ -1,15 +1,16 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "diyer/crm-leads",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "MVP de CRM de leads: alta manual, pipeline kanban, actividades y exportación CSV.",
     "keywords": [
         "laravel",
-        "framework"
+        "crm",
+        "leads"
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.3",
+        "php": "^8.4",
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0",
         "livewire/livewire": "^4"
@@ -68,7 +69,6 @@
         ],
         "post-create-project-cmd": [
             "@php artisan key:generate --ansi",
-            "@php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\"",
             "@php artisan migrate --graceful --ansi"
         ],
         "pre-package-uninstall": [
