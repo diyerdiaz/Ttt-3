@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Domain\Activities\Contracts\ActivityRepository;
+use App\Domain\Activities\Models\Activity;
+use App\Domain\Activities\Policies\ActivityPolicy;
 use App\Domain\Identity\Contracts\UserRepository;
 use App\Domain\Leads\Contracts\LeadBoardRepository;
 use App\Domain\Leads\Contracts\LeadRepository;
@@ -11,6 +14,7 @@ use App\Domain\Leads\Models\Lead;
 use App\Domain\Leads\Policies\LeadPolicy;
 use App\Domain\Shared\Contracts\TransactionManager;
 use App\Infrastructure\Persistence\DatabaseTransactionManager;
+use App\Infrastructure\Persistence\EloquentActivityRepository;
 use App\Infrastructure\Persistence\EloquentLeadRepository;
 use App\Infrastructure\Persistence\EloquentUserRepository;
 use Illuminate\Support\Facades\Gate;
@@ -25,11 +29,13 @@ final class DomainServiceProvider extends ServiceProvider
         UserRepository::class => EloquentUserRepository::class,
         LeadRepository::class => EloquentLeadRepository::class,
         LeadBoardRepository::class => EloquentLeadRepository::class,
+        ActivityRepository::class => EloquentActivityRepository::class,
         TransactionManager::class => DatabaseTransactionManager::class,
     ];
 
     public function boot(): void
     {
         Gate::policy(Lead::class, LeadPolicy::class);
+        Gate::policy(Activity::class, ActivityPolicy::class);
     }
 }

@@ -7,15 +7,15 @@ use App\Domain\Activities\Enums\ActivityType;
 use App\Domain\Activities\Events\ActivityLogged;
 use App\Domain\Activities\ValueObjects\ActivityData;
 use Carbon\CarbonImmutable;
-use Illuminate\Events\Dispatcher;
 use Tests\Support\InMemoryActivityRepository;
 use Tests\Support\LeadActions;
 
 it('stores the activity for the given lead', function (): void {
     $repository = new InMemoryActivityRepository;
     $moment = CarbonImmutable::parse('2026-11-20 09:00:00');
+    $log = [];
 
-    $activity = (new LogActivity($repository, new Dispatcher))(7, new ActivityData('Intro call', $moment, ActivityType::Call));
+    $activity = (new LogActivity($repository, LeadActions::recordingDispatcher([ActivityLogged::class], $log)))(7, new ActivityData('Intro call', $moment, ActivityType::Call));
 
     expect($activity->lead_id)->toBe(7)
         ->and($activity->description)->toBe('Intro call')

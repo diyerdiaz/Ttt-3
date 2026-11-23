@@ -22,13 +22,14 @@ final class InMemoryActivityRepository implements ActivityRepository
 
     public function create(int $leadId, ActivityData $data): Activity
     {
-        $activity = new Activity([
-            'type' => $data->type,
+        $activity = new Activity;
+        $activity->setRawAttributes([
+            'id' => ++$this->lastId,
+            'lead_id' => $leadId,
+            'type' => $data->type?->value,
             'description' => $data->description,
-            'occurred_at' => $data->occurredAt,
+            'occurred_at' => $data->occurredAt->toDateTimeString(),
         ]);
-        $activity->setAttribute('lead_id', $leadId);
-        $activity->setAttribute('id', ++$this->lastId);
 
         return $this->activities[] = $activity;
     }
