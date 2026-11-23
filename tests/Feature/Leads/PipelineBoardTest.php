@@ -165,6 +165,7 @@ describe('moving leads', function (): void {
     it('shows an error when the transition is refused', function (): void {
         $lead = Lead::factory()->create();
         $this->mock(LeadBoardRepository::class, static function (MockInterface $board): void {
+            $board->shouldReceive('columns')->andReturn(array_fill_keys(array_map(static fn (LeadStatus $s): string => $s->value, LeadStatus::boardOrder()), []));
             $board->shouldReceive('lockBoard')->once();
             $board->shouldReceive('findForUpdate')->once()->andThrow(InvalidStatusTransition::between(LeadStatus::New, LeadStatus::Won));
         });

@@ -104,12 +104,12 @@ Las rutas se reparten en un archivo por feature, `routes/web/{auth,leads,pipelin
 | GET | /login | `LoginController@create` | guest |
 | POST | /login | `LoginController@store` (`LoginRequest`) | guest, `throttle:login` (5/min email+IP, 20/min IP, 50/h cuenta; al superar un límite se responde con un 302 de vuelta al formulario con el error genérico "Demasiados intentos", no con un 429) |
 | POST | /logout | `LogoutController` | auth |
-| GET | / | `dashboard` (vista placeholder; las ramas siguientes la sustituyen o redirigen a `pipeline`) | auth, admin |
+| GET | / | redirección 302 a `/pipeline` (ruta `dashboard`; se eliminó la vista placeholder) | auth, admin |
 | GET | /leads | Livewire `Leads\LeadIndex` (búsqueda y paginación) | auth, admin |
 | GET | /leads/create | Livewire `Leads\LeadForm` | auth, admin |
 | GET | /leads/{lead}/edit | Livewire `Leads\LeadForm` (`whereNumber`) | auth, admin |
 | GET | /leads/{lead} | Livewire `Leads\LeadShow`, que embebe `Activities\ActivityTimeline` | auth, admin |
-| GET | /pipeline | Livewire `Pipeline\PipelineBoard` | auth, admin |
+| GET | /pipeline | Livewire `Pipeline\PipelineBoard` (ruta `pipeline`, en `routes/web/pipeline.php`) | auth, admin |
 | GET | /leads/export?status[]=new&status[]=won | `ExportLeadsController` (invocable, `ExportLeadsRequest`) | auth, admin, `throttle:10,1` |
 
 La validación en el borde se hace así: `LeadForm` usa un Livewire Form object (`Http/Livewire/Forms/LeadFormData`) con reglas de nombre, email y teléfono, y `toDto(): LeadData`. `ActivityTimeline` valida `description` (requerida, máximo 5000), `occurred_at` (fecha, como mucho `now()+1 day`) y `type` (`Rule::enum`, nullable). `ExportLeadsRequest` valida `status` (array, como mucho 6 elementos) y `status.*` (`Rule::enum(LeadStatus::class)`, distinct).
@@ -127,6 +127,13 @@ La validación en el borde se hace así: `LeadForm` usa un Livewire Form object 
    4. si `set(orderedIds) ≠ set(idsInColumn(to)) ∪ {id}`, lanza `StaleBoardState` (otra pestaña cambió el tablero);
    5. `placeColumn(to, orderedIds)`;
    6. COMMIT, en el que se valida la UNIQUE diferida, y después se emite `LeadStatusChanged` si cambió el estado.
+   Desviaciones de la implementación:
+   - `moveLead(mixed $leadId, mixed $toStatus, mixed $orderedIds)` va sin tipos escalares para que un payload manipulado responda 422 y no un `TypeError` (500). Los ids deben ser enteros reales (no cadenas numéricas), la lista debe ser una lista sin claves y el lead inexistente responde 404.
+   - El componente no tiene propiedades públicas: `updating()` aborta siempre con 422. El mensaje de error es un error de validación (`@error('move')`), no una propiedad.
+   - `MoveLeadData` vive en `App\Application\Leads\DTOs`; `StaleBoardState` en `Domain\Leads\Exceptions`.
+   - `columns()` devuelve siempre los seis estados (en orden de `boardOrder`, con lista vacía si no hay leads) con una sola consulta de `id, name, company, status, position`.
+   - `placeColumn` solo reescribe las filas cuyo estado o posición cambian, para no tocar `updated_at` de las demás.
+   - Con la regla actual (`canTransitionTo` siempre `true`) la rama `InvalidStatusTransition` de `MoveLead` es inalcanzable con datos reales; se cubre en el componente con un repositorio simulado que lanza la excepción. Cuando la regla se endurezca, añadir el test de la Action con un par prohibido.
 4. **Respuesta**: el componente se vuelve a renderizar desde BD, que es la fuente de verdad; con `wire:key` el morph reconcilia el DOM. Si salta `InvalidStatusTransition` o `StaleBoardState`, se captura, se muestra un toast de error y el re-render devuelve la tarjeta a su sitio. En los demás casos de error, 403 o 422.
 
 ## 5. Seguridad
@@ -270,7 +277,7 @@ Implementa `laravel-specialist`; audita `security-scanner` (inyección CSV).
 - **Búsqueda: índice trigram aplazado (YAGNI)**: medido 4 ms con 1000 leads (escaneo secuencial). `pg_trgm` + índice GIN no hace falta hasta superar unos 50 000 leads; entonces se añade en una migración nueva, con `EXPLAIN ANALYZE` antes y después.
 - **Timeline de actividades**: índice `(lead_id, occurred_at DESC, id DESC)`; paginado/limitado a las N últimas.
 - **Export CSV**: `streamDownload` + `lazyById(500)` + `select` mínimo → memoria constante. Test: `it('exports 5000 leads without loading them all in memory')` (pico de memoria acotado).
-- **Caché**: el MVP NO cachea el tablero (un solo admin, datos que cambian en cada drag → invalidación constante, coste > beneficio). Se cachean solo los conteos por estado del tablero (`leads:board:counts:v1`, TTL 5 min) invalidados por el evento `LeadStatusChanged` y por alta de lead, con test de invalidación. Driver `database`.
+- **Caché**: el MVP NO cachea nada. Un solo admin y datos que cambian en cada arrastre implican invalidación constante, y no hay medición que justifique cachear. La caché de conteos por estado (`leads:board:counts:v1`) prevista inicialmente se **descarta por YAGNI**: los conteos salen de las columnas ya cargadas (`count()` en PHP), sin consulta extra. Si una medición lo justificara, se reabre con invalidación por evento y test.
 - **Livewire**: tablero con `#[Computed]` para columnas, `#[Locked]` en IDs, payload del drag solo IDs; formularios con `wire:model.blur`.
 - **Producción**: `php artisan optimize`, OPcache, autoload optimizado (README §Producción).
 - **Auditoría**: `performance-engineer` revisa `feat/kanban-pipeline` y `feat/csv-export` además de `code-reviewer`.

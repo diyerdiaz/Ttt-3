@@ -59,10 +59,13 @@ final class EloquentLeadRepository implements LeadBoardRepository, LeadRepositor
 
     public function idsInColumn(LeadStatus $status): array
     {
-        return array_map(
-            static fn (mixed $id): int => (int) $id,
-            Lead::query()->where('status', $status)->orderBy('position')->pluck('id')->all(),
-        );
+        $ids = [];
+
+        foreach (Lead::query()->where('status', $status)->orderBy('position')->get(['id']) as $lead) {
+            $ids[] = $lead->id;
+        }
+
+        return $ids;
     }
 
     public function placeColumn(LeadStatus $status, array $orderedIds): void

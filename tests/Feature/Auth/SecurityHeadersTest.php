@@ -16,7 +16,10 @@ it('sends hardening headers on the login page', function (): void {
 it('sends hardening headers on protected pages and redirects', function (): void {
     $this->get('/')->assertRedirect('/login')->assertHeader('X-Frame-Options', 'DENY');
 
-    $this->actingAs(Accounts::admin())->get('/')
+    $admin = Accounts::admin();
+    $this->actingAs($admin)->get('/')->assertRedirect('/pipeline')->assertHeader('X-Frame-Options', 'DENY');
+
+    $this->actingAs($admin)->get('/pipeline')
         ->assertOk()
         ->assertHeader('X-Frame-Options', 'DENY')
         ->assertHeader('Content-Security-Policy', "frame-ancestors 'none'")
