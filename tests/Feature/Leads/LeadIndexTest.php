@@ -123,10 +123,12 @@ it('redirects guests to the login page', function (): void {
 });
 
 it('does not let a non-admin save through the form component', function (): void {
+    $component = Livewire::test(LeadForm::class)->set('form.name', 'Ada');
+
     $this->app['auth']->logout();
     $this->actingAs(Accounts::user());
 
-    Livewire::test(LeadForm::class)->set('form.name', 'Ada')->call('save')->assertForbidden();
+    $component->call('save')->assertForbidden();
 
     expect(Lead::query()->count())->toBe(0);
 });

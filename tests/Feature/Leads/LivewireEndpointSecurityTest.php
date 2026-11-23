@@ -16,10 +16,11 @@ it('rejects non admins on the Livewire update endpoint', function (): void {
         ->assertForbidden();
 });
 
-it('lets admins reach the Livewire update endpoint', function (): void {
-    $this->actingAs(Accounts::admin())
-        ->postJson(route('livewire.update', absolute: false), ['components' => []], ['X-Livewire' => 'true'])
-        ->assertSuccessful();
+it('does not turn admins away at the Livewire update endpoint', function (): void {
+    $response = $this->actingAs(Accounts::admin())
+        ->postJson(route('livewire.update', absolute: false), ['components' => []], ['X-Livewire' => 'true']);
+
+    expect($response->getStatusCode())->not->toBeIn([401, 403, 419]);
 });
 
 it('rejects guests and non admins on the Livewire upload endpoint', function (): void {

@@ -85,3 +85,15 @@ it('fails to update a lead that does not exist', function (): void {
     expect(fn () => app(UpdateLead::class)(0, new LeadData('Ghost')))
         ->toThrow(ModelNotFoundException::class);
 });
+
+it('delivers events to real listeners once the transaction commits', function (): void {
+    $received = [];
+    Event::listen(LeadStatusChanged::class, static function (LeadStatusChanged $event) use (&$received): void {
+        $received[] = $event->to;
+    });
+    $lead = Lead::factory()->status(LeadStatus::New)->create();
+
+    app(UpdateLead::class)((int) $lead->id, new LeadData('Ada', status: LeadStatus::Won));
+
+    expect($received)->toBe([LeadStatus::Won]);
+});

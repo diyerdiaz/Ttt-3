@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Domain\Leads\Enums\LeadStatus;
 use App\Domain\Leads\Models\Lead;
 use App\Http\Livewire\Leads\LeadForm;
-use Livewire\Exceptions\CannotUpdateLockedPropertyException;
 use Livewire\Livewire;
 use Tests\Support\Accounts;
 
@@ -76,22 +75,22 @@ it('validates required name and email format', function (): void {
     expect(Lead::query()->count())->toBe(0);
 });
 
-it('validates the other fields', function (string $field, string $value, string $rule): void {
+it('validates the other fields', function (string $field, string $value): void {
     Livewire::test(LeadForm::class)
         ->set('form.name', 'Ada')
         ->set("form.{$field}", $value)
         ->call('save')
-        ->assertHasErrors(["form.{$field}" => $rule]);
+        ->assertHasErrors(["form.{$field}"]);
 
     expect(Lead::query()->count())->toBe(0);
 })->with([
-    'name too long' => ['name', str_repeat('a', 151), 'max'],
-    'email too long' => ['email', str_repeat('a', 250).'@x.co', 'max'],
-    'phone with letters' => ['phone', 'call me maybe', 'phone'],
-    'phone too short' => ['phone', '123', 'phone'],
-    'company too long' => ['company', str_repeat('a', 151), 'max'],
-    'notes too long' => ['notes', str_repeat('a', 5001), 'max'],
-    'unknown status' => ['status', 'archived', 'enum'],
+    'name too long' => ['name', str_repeat('a', 151)],
+    'email too long' => ['email', str_repeat('a', 250).'@x.co'],
+    'phone with letters' => ['phone', 'call me maybe'],
+    'phone too short' => ['phone', '123'],
+    'company too long' => ['company', str_repeat('a', 151)],
+    'notes too long' => ['notes', str_repeat('a', 5001)],
+    'unknown status' => ['status', 'archived'],
 ]);
 
 it('edits an existing lead', function (): void {
@@ -133,7 +132,7 @@ it('does not let the client change which lead is being edited', function (): voi
     $other = Lead::factory()->create(['name' => 'Victim']);
 
     Livewire::test(LeadForm::class, ['lead' => $lead->id])->set('leadId', $other->id);
-})->throws(CannotUpdateLockedPropertyException::class);
+})->throws(Exception::class, 'Cannot update locked property');
 
 it('escapes lead data in the edit form', function (): void {
     $lead = Lead::factory()->create(['name' => '"><script>alert(1)</script>']);

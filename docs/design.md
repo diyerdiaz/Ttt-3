@@ -60,7 +60,7 @@ Escala: la reordenación es O(n) por columna, adecuada para cientos de leads. Si
 - Models: `Lead` (casts `status => LeadStatus`; relación `activities()`).
 - Enums: `LeadStatus: string` con los casos `New, Contacted, Qualified, Proposal, Won, Lost` y los métodos `label(): string`, `isTerminal(): bool`, `canTransitionTo(self $to): bool`, `static boardOrder(): list<self>`.
 - Regla de transición del MVP: **libre entre cualquier par de estados** (incluidos `Won`/`Lost`, en ambos sentidos). `canTransitionTo` devuelve `true` para todo cambio de estado; mover dentro de la misma columna es reorden y siempre válido. Al estar la regla en un único método del enum, endurecerla es un cambio local.
-- VOs: `EmailAddress` (Shared); `PhoneNumber` (trim, solo `+ 0-9 espacio - ( )`, de 6 a 32 caracteres).
+- VOs: `EmailAddress` (Shared); `LeadData` (Domain, no Application: los contratos de repositorio lo reciben y Domain no puede depender de Application); `PhoneNumber` (trim, espacios internos colapsados, al menos 6 dígitos, solo `+ 0-9 espacio - ( )`, de 6 a 32 caracteres).
 - Contracts (segregados por ISP, lo que además evita conflictos de merge entre ramas paralelas):
   - `LeadRepository`: `find(int $id): ?Lead`; `findOrFail(int $id): Lead`; `create(LeadData $d, int $position): Lead`; `update(Lead $l, LeadData $d): Lead`; `nextPositionIn(LeadStatus $s): int`; `search(?string $term, int $perPage): LengthAwarePaginator`.
   - `LeadBoardRepository`: `lockBoard(): void`; `columns(): array<value-of<LeadStatus>, list<Lead>>`; `findForUpdate(int $id): Lead`; `idsInColumn(LeadStatus $s): list<int>`; `placeColumn(LeadStatus $s, list<int> $orderedIds): void`.
@@ -206,7 +206,7 @@ Primero `database-expert` (migraciones, CHECK, UNIQUE diferida, índices; primer
   - `it('forbids lead management to non-admins')`
 
 ### feat/kanban-pipeline
-TODO (seguridad N-4, diferido desde admin-auth): el endpoint `livewire/update` debe llevar `auth` + `admin` (p. ej. `Livewire::setUpdateRoute` con esos middleware) en cuanto exista el primer componente con datos; añadir un test que haga POST al endpoint como invitado y como no admin.
+RESUELTO en `feat/lead-management` (seguridad N-4, diferido desde admin-auth): el endpoint `livewire/update` se registra con `Livewire::setUpdateRoute` en `IdentityServiceProvider` con los middleware `web`, `auth` y `admin`, y el de subidas temporales (`livewire.upload-file`) lleva `auth` y `admin` desde `config/livewire.php`. Cubierto por `tests/Feature/Leads/LivewireEndpointSecurityTest.php` (POST como invitado y como no admin). Esta rama solo debe mantener el comportamiento.
 Implementan `laravel-specialist` (Action y componente) y después `ui-polisher` (Blade, SortableJS, estilos), en secuencia. E2E de arrastre con `playwright-expert`.
 - Unit/Action:
   - `it('reorders leads within the same column')`
