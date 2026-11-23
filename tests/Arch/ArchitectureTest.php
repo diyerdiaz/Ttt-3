@@ -44,3 +44,7 @@ arch('lead events are delivered after commit', function (): void {
         expect("App\\Domain\\Leads\\Events\\{$event}")->toImplement(ShouldDispatchAfterCommit::class);
     }
 });
+
+arch('activity events are delivered after commit', function (): void {
+    expect('App\\Domain\\Activities\\Events\\ActivityLogged')->toImplement(ShouldDispatchAfterCommit::class);
+});
