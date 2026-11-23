@@ -38,3 +38,14 @@ Laravel 13, PHP 8.4+, PostgreSQL (BDs `crm` y `crm_test`, usuario `diyer`), Pest
 ### Limitaciones conocidas (no detectables estáticamente: revisar en code review)
 - Alias global `DB` (`use DB;` / `\DB::`): Pest filtra por prefijo de namespace resuelto vía PSR-4 de Composer; `DB` no corresponde a ninguna capa, así que no se detecta (probado con un canario; tampoco da falsos positivos). Por eso no se añade a la regla.
 - `app('db')`, `app(DatabaseManager::class)` resuelto por string, y `Model::query()` / `Model::where()` desde `Http` (acceso Eloquent directo sin pasar por repositorio).
+
+## Soporte de tests (`tests/Support`) — reutilízalo, no dupliques
+- Prohibido definir funciones o constantes globales en archivos de test (colisionan entre archivos y ramas). Los helpers van en clases de `tests/Support`.
+- `Tests\Support\Auth`: `admin($email)`, `user($email)`, `STRONG_PASSWORD` (única contraseña válida para `Password::defaults()`), `WRONG_PASSWORD`, `GENERIC_ERROR`, `attemptLogin($test, $email, $password, $ip)`.
+- `Tests\Support\InMemoryUserRepository`: fake del contrato para tests unitarios de Actions.
+- `Tests\Support\ConfigEnv::evaluate($file, $env)`: evalúa un fichero de `config/` con variables de entorno temporales.
+- `Tests\Support\AuditLog::context($channel, $level, $message)`: recupera el contexto de un log espiado.
+- `TestCase::withCsrfEnforced()` desactiva el bypass de CSRF de Laravel en tests y comprueba que `runningUnitTests()` es false; `TestCase::setUp` llama a `withoutVite()` (la suite no depende de `public/build`).
+- `AUTH_TIMEBOX_DURATION=0` en `phpunit.xml`: sin él cada intento de login espera 500 ms.
+- Reglas arch de Http (controllers sin `Illuminate\Database` ni modelos de Domain, `final` en controllers/middleware/requests, controllers extienden `Controller`) viven en `ArchRules` con sus canarios en `tests/Fixtures/Arch/Http`.
+- Seguridad: `SecurityHeaders` es middleware global; el rate limiter `login` y la auditoría (`storage/logs/security.log`) están en `IdentityServiceProvider`. `php artisan cache:clear` desbloquea un login limitado.

@@ -49,9 +49,12 @@ Escala: la reordenación es O(n) por columna, adecuada para cientos de leads. Si
 
 ### Identity
 - Models: `User`, con `isAdmin(): bool` y cast `is_admin => bool`.
-- Contracts: `UserRepository`: `findByEmail(EmailAddress $email): ?User`; `create(NewUserData $data): User`.
-- Application: `Actions\CreateAdminUser`: `__invoke(NewUserData $data): User`. Hashea con `Hasher` (inyectado) y lanza `AdminAlreadyExists` si el email existe. DTO `NewUserData(string $name, EmailAddress $email, string $plainPassword)`.
-- Infra: `EloquentUserRepository`. Http: `LoginController`, `LogoutController`, `LoginRequest`, middleware `EnsureUserIsAdmin`. Consola: `crm:create-admin`. Seeder `AdminUserSeeder`.
+- Contracts: `UserRepository`: `findByEmail(EmailAddress $email): ?User`; `createAdmin(string $name, EmailAddress $email, string $passwordHash): User`. Desviación respecto al diseño inicial (`create(NewUserData)`): Domain no puede depender de `Application` (regla arch), así que el contrato recibe el hash ya calculado en vez del DTO.
+- Application: `Actions\CreateAdminUser`: `__invoke(NewUserData $data): User`. Aplica la política de contraseña (`Password::defaults()`: 12-72 caracteres, y `uncompromised()` solo en producción; lanza `WeakPassword`), hashea con `Hasher` (inyectado) y lanza `EmailAlreadyTaken` si el email existe (también si el repositorio recibe una violación de unicidad). DTO `NewUserData(string $name, EmailAddress $email, string $plainPassword)`.
+- `EmailAddress::normalize()` (trim + minúsculas) es la única fuente de normalización: VO, mutador de `User`, login y rate limiter.
+- Infra: `EloquentUserRepository`. Consola: `Infrastructure\Console\CreateAdminCommand` (`crm:create-admin`), registrada con `withCommands` en `bootstrap/app.php`; vive en Infrastructure y no en `app/Console` porque la lista blanca de `app/` no admite más raíces. Seeder `AdminUserSeeder` (solo desarrollo; falla en producción).
+- Http: `LoginController`, `LogoutController`, `LoginRequest`, middleware `EnsureUserIsAdmin` y `SecurityHeaders` (global), `RateLimiting\LoginRateLimiter`, `Security\SecurityAuditLogger` (canal de log `security`).
+- Providers: `IdentityServiceProvider` agrupa el gate `access-admin` (`Domain\Identity\Abilities`), `Password::defaults()`, el limiter `login` y los listeners de auditoría, para no tocar `AppServiceProvider` desde cada rama.
 
 ### Leads
 - Models: `Lead` (casts `status => LeadStatus`; relación `activities()`).
@@ -98,9 +101,9 @@ Las rutas se reparten en un archivo por feature, `routes/web/{auth,leads,pipelin
 | Método | URI | Handler | Middleware |
 |---|---|---|---|
 | GET | /login | `LoginController@create` | guest |
-| POST | /login | `LoginController@store` (`LoginRequest`) | guest, `throttle:login` |
+| POST | /login | `LoginController@store` (`LoginRequest`) | guest, `throttle:login` (5/min email+IP, 20/min IP, 50/h cuenta; el 429 vuelve al formulario con un error genérico) |
 | POST | /logout | `LogoutController` | auth |
-| GET | / | redirige a `pipeline` | auth, admin |
+| GET | / | `dashboard` (vista placeholder; las ramas siguientes la sustituyen o redirigen a `pipeline`) | auth, admin |
 | GET | /leads | Livewire `Leads\LeadIndex` (búsqueda y paginación) | auth, admin |
 | GET | /leads/create | Livewire `Leads\LeadForm` | auth, admin |
 | GET | /leads/{lead}/edit | Livewire `Leads\LeadForm` (`whereNumber`) | auth, admin |
