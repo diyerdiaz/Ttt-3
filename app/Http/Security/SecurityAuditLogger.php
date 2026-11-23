@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Security;
 
 use App\Domain\Shared\ValueObjects\EmailAddress;
-use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Http\Request;
@@ -21,18 +20,14 @@ final readonly class SecurityAuditLogger
 
     public function __construct(private Request $request) {}
 
-    public function failed(Failed $event): void
+    public function failed(): void
     {
-        $email = $event->credentials['email'] ?? '';
-
-        Log::channel(self::CHANNEL)->warning('auth.login_failed', $this->emailContext(is_string($email) ? $email : ''));
+        Log::channel(self::CHANNEL)->warning('auth.login_failed', $this->requestEmailContext());
     }
 
     public function throttled(): void
     {
-        $email = $this->request->input('email');
-
-        Log::channel(self::CHANNEL)->warning('auth.login_throttled', $this->emailContext(is_string($email) ? $email : ''));
+        Log::channel(self::CHANNEL)->warning('auth.login_throttled', $this->requestEmailContext());
     }
 
     public function loggedIn(Login $event): void
@@ -42,15 +37,17 @@ final readonly class SecurityAuditLogger
 
     public function loggedOut(Logout $event): void
     {
-        Log::channel(self::CHANNEL)->info('auth.logout', $this->userContext($event->user?->getAuthIdentifier()));
+        Log::channel(self::CHANNEL)->info('auth.logout', $this->userContext($event->user->getAuthIdentifier()));
     }
 
     /**
      * @return array<string, string|null>
      */
-    private function emailContext(string $email): array
+    private function requestEmailContext(): array
     {
-        return ['email_hash' => hash('sha256', EmailAddress::normalize($email))] + $this->requestContext();
+        $email = $this->request->input('email');
+
+        return ['email_hash' => hash('sha256', EmailAddress::normalize(is_string($email) ? $email : ''))] + $this->requestContext();
     }
 
     /**
