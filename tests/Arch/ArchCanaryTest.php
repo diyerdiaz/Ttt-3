@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use PHPUnit\Framework\ExpectationFailedException;
+use PHPUnit\Framework\AssertionFailedError;
 use Tests\Support\ArchRules;
 
 /*
@@ -43,7 +43,7 @@ dataset('forbidden uses', [
 
 it('detects a forbidden dependency', function (string $layer, string $class, string $dependency): void {
     expect(fn () => ArchRules::assertNoForbiddenUses(ARCH_FIXTURES, $layer, archFixture($layer, $class)))
-        ->toThrow(ExpectationFailedException::class, archDependency($dependency));
+        ->toThrow(AssertionFailedError::class, archDependency($dependency));
 })->with('forbidden uses');
 
 it('accepts a class without forbidden dependencies', function (): void {
@@ -54,17 +54,17 @@ it('accepts a class without forbidden dependencies', function (): void {
 
 it('detects a non-final class', function (string $layer): void {
     expect(fn () => ArchRules::assertFinal($layer, archFixture($layer, 'NotFinal')))
-        ->toThrow(ExpectationFailedException::class, 'to be final');
+        ->toThrow(AssertionFailedError::class, 'to be final');
 })->with(['Application', 'Infrastructure']);
 
 it('detects an Eloquent model outside the domain', function (string $layer): void {
     expect(fn () => ArchRules::assertNoEloquentModels($layer, archFixture($layer, 'ExtendsModel')))
-        ->toThrow(ExpectationFailedException::class, 'not to extend');
+        ->toThrow(AssertionFailedError::class, 'not to extend');
 })->with(['Application', 'Http', 'Infrastructure']);
 
 it('detects a request that is not a FormRequest', function (): void {
     expect(fn () => ArchRules::assertFormRequests(archFixture('Http\Requests', 'NotAFormRequest')))
-        ->toThrow(ExpectationFailedException::class, 'to extend');
+        ->toThrow(AssertionFailedError::class, 'to extend');
 });
 
 it('accepts a FormRequest', function (): void {
@@ -75,5 +75,5 @@ it('accepts a FormRequest', function (): void {
 
 it('detects a file without strict types', function (): void {
     expect(fn () => ArchRules::assertStrictTypes(archFixture('Violations', 'MissingStrictTypes')))
-        ->toThrow(ExpectationFailedException::class, 'strict types');
+        ->toThrow(AssertionFailedError::class, 'strict types');
 });

@@ -1,0 +1,84 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Support;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Http\FormRequest;
+
+/**
+ * Single definition of every architecture rule. The real suite applies them to the "App"
+ * root and the canaries apply the very same methods to offending fixtures.
+ *
+ * Rules take ONE subject on purpose: with an array of subjects, `not->toUse()` only fails
+ * when EVERY subject violates it (Pest builds a "toUse" per dependency and inverts it), so
+ * a violation in a single layer goes unnoticed. Dependency arrays are safe.
+ */
+final class ArchRules
+{
+    public const ELOQUENT_FREE_LAYERS = ['Application', 'Http', 'Infrastructure'];
+
+    public const FINAL_LAYERS = ['Application', 'Infrastructure'];
+
+    /**
+     * @return array<string, list<string>> layer => namespaces it must not use
+     */
+    public static function forbiddenUses(string $root): array
+    {
+        return [
+            'Domain' => [
+                $root.'\Application',
+                $root.'\Http',
+                $root.'\Infrastructure',
+                'Illuminate\Http',
+                'Livewire',
+            ],
+            'Application' => [
+                $root.'\Http',
+                $root.'\Infrastructure',
+                'Illuminate\Http',
+                'Livewire',
+                'Illuminate\Support\Facades\DB',
+            ],
+            'Http' => [
+                $root.'\Infrastructure',
+                'Illuminate\Support\Facades\DB',
+            ],
+        ];
+    }
+
+    public static function assertNoForbiddenUses(string $root, string $layer, ?string $subject = null): void
+    {
+        self::verify(expect($subject ?? $root.'\\'.$layer)->not->toUse(self::forbiddenUses($root)[$layer]));
+    }
+
+    public static function assertFinal(string $layer, ?string $subject = null): void
+    {
+        self::verify(expect($subject ?? 'App\\'.$layer)->classes()->toBeFinal());
+    }
+
+    public static function assertNoEloquentModels(string $layer, ?string $subject = null): void
+    {
+        self::verify(expect($subject ?? 'App\\'.$layer)->not->toExtend(Model::class));
+    }
+
+    public static function assertFormRequests(string $subject = 'App\Http\Requests'): void
+    {
+        self::verify(expect($subject)->toExtend(FormRequest::class));
+    }
+
+    public static function assertStrictTypes(string $subject = 'App'): void
+    {
+        self::verify(expect($subject)->toUseStrictTypes());
+    }
+
+    /**
+     * Pest evaluates arch expectations lazily, in the destructor; forcing it makes them
+     * fail inside the calling closure.
+     */
+    private static function verify(object $expectation): void
+    {
+        $expectation->__destruct();
+    }
+}
