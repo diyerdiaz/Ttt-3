@@ -305,3 +305,4 @@ Implementa `laravel-specialist`; audita `security-scanner` (inyección CSV).
 - (Revisión 2026-11-23) `CreateAdminCommand` comprueba el vacío con `trim` ASCII (la Action ya rechaza NBSP); unificar el criterio o quitar el doble chequeo.
 - Los tests escriben en `storage/logs/security-*.log` real (canal "testing"): redirigir el canal `security` a `null` o a un fake en tests.
 - La suite completa supera los 128 MB: `phpunit.xml` fija `memory_limit=512M`. Investigar si algún test retiene memoria (p. ej. el de exportación de 5000 leads).
+- (Revisión 2026-11-23) `DisplayTimezone` (Domain\Shared) llama a `config()`: inyectar la zona por constructor y resolverla en `DomainServiceProvider`, o documentarlo en "Limitaciones conocidas" de CLAUDE.md.
