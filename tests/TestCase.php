@@ -1,0 +1,71 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests;
+
+use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Http;
+use Tests\Support\TestDatabaseGuard;
+
+abstract class TestCase extends BaseTestCase
+{
+    private const array FORCED_ENV = ['APP_ENV', 'APP_CONFIG_CACHE', 'DB_CONNECTION', 'DB_DATABASE', 'DB_URL'];
+
+    // phpunit.xml fuerza estas variables en getenv()/$_ENV, pero Laravel lee antes $_SERVER,
+    // que conserva el valor exportado en la shell. Se sincroniza para que el force sea efectivo.
+    public function createApplication()
+    {
+        foreach (self::FORCED_ENV as $name) {
+            $value = getenv($name);
+
+            if ($value !== false) {
+                $_SERVER[$name] = $value;
+            }
+        }
+
+        return parent::createApplication();
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->withoutVite();
+        Http::preventStrayRequests();
+    }
+
+    protected function inEnvironment(string $environment): static
+    {
+        $this->app->detectEnvironment(static fn (): string => $environment);
+
+        expect($this->app->environment())->toBe($environment);
+
+        return $this;
+    }
+
+    /**
+     * Laravel skips CSRF verification while running unit tests; leave that mode to exercise the real middleware.
+     */
+    protected function withCsrfEnforced(): static
+    {
+        $this->inEnvironment('local');
+
+        expect($this->app->runningUnitTests())->toBeFalse();
+
+        return $this;
+    }
+
+    /**
+     * @return array<class-string, class-string>
+     */
+    protected function setUpTraits(): array
+    {
+        TestDatabaseGuard::assertSafe(
+            (string) $this->app['env'],
+            (string) $this->app['db']->connection()->getDatabaseName(),
+        );
+
+        return parent::setUpTraits();
+    }
+}
