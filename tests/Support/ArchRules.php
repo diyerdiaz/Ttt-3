@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -17,6 +18,9 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 final class ArchRules
 {
+    /** Root namespace of the offending fixtures the canaries run the rules against. */
+    public const FIXTURES = 'Tests\Fixtures\Arch';
+
     /** Only these directories may exist directly under app/. */
     public const APP_DIRECTORIES = ['Domain', 'Application', 'Infrastructure', 'Http', 'Providers'];
 
@@ -59,6 +63,50 @@ final class ArchRules
         ];
     }
 
+    public static function fixture(string $layer, string $class = ''): string
+    {
+        return rtrim(self::FIXTURES.'\\'.$layer.'\\'.$class, '\\');
+    }
+
+    /**
+     * Namespaces of the Eloquent models of every domain context found under $root.
+     *
+     * @return list<string>
+     */
+    public static function domainModelNamespaces(string $root): array
+    {
+        $path = $root === 'App' ? dirname(__DIR__, 2).'/app/Domain' : dirname(__DIR__).'/Fixtures/Arch/Domain';
+
+        return array_map(
+            static fn (string $context): string => $root.'\\Domain\\'.basename($context).'\\Models',
+            glob($path.'/*', GLOB_ONLYDIR) ?: [],
+        );
+    }
+
+    public static function assertThinControllers(string $root, ?string $subject = null): void
+    {
+        self::verify(expect($subject ?? $root.'\\Http\\Controllers')->not->toUse([
+            'Illuminate\Database',
+            ...self::domainModelNamespaces($root),
+        ]));
+    }
+
+    /**
+     * @param  list<class-string>  $ignoring
+     */
+    public static function assertFinalClasses(string $subject, array $ignoring = []): void
+    {
+        self::verify(expect($subject)->classes()->toBeFinal()->ignoring($ignoring));
+    }
+
+    /**
+     * @param  class-string  $base
+     */
+    public static function assertControllersExtendBase(string $subject = 'App\Http\Controllers', string $base = Controller::class): void
+    {
+        self::verify(expect($subject)->toExtend($base)->ignoring($base));
+    }
+
     public static function assertNoForbiddenUses(string $root, string $layer, ?string $subject = null): void
     {
         self::verify(expect($subject ?? $root.'\\'.$layer)->not->toUse(self::forbiddenUses($root)[$layer]));
@@ -89,7 +137,10 @@ final class ArchRules
      */
     public static function unexpectedAppEntries(string $appPath): array
     {
-        $entries = array_diff(scandir($appPath) ?: [], ['.', '..']);
+        $entries = array_filter(
+            scandir($appPath) ?: [],
+            static fn (string $entry): bool => ! str_starts_with($entry, '.'),
+        );
 
         return array_values(array_filter(
             $entries,

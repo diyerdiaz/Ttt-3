@@ -116,4 +116,16 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Authentication Timebox
+    |--------------------------------------------------------------------------
+    |
+    | Minimum duration (in microseconds) of every authentication attempt, so
+    | response time does not reveal whether an account exists.
+    |
+    */
+
+    'timebox_duration' => (int) env('AUTH_TIMEBOX_DURATION', 500000),
+
 ];

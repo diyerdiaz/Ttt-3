@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Http;
 use Tests\Support\TestDatabaseGuard;
 
 abstract class TestCase extends BaseTestCase
@@ -24,6 +25,35 @@ abstract class TestCase extends BaseTestCase
         }
 
         return parent::createApplication();
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->withoutVite();
+        Http::preventStrayRequests();
+    }
+
+    protected function inEnvironment(string $environment): static
+    {
+        $this->app->detectEnvironment(static fn (): string => $environment);
+
+        expect($this->app->environment())->toBe($environment);
+
+        return $this;
+    }
+
+    /**
+     * Laravel skips CSRF verification while running unit tests; leave that mode to exercise the real middleware.
+     */
+    protected function withCsrfEnforced(): static
+    {
+        $this->inEnvironment('local');
+
+        expect($this->app->runningUnitTests())->toBeFalse();
+
+        return $this;
     }
 
     /**
