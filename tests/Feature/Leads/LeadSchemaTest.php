@@ -40,6 +40,8 @@ it('rejects a duplicate position in the same status at commit', function (): voi
         DB::transaction(function (): void {
             LeadRows::insert(['position' => 0]);
             LeadRows::insert(['position' => 0]);
+            // RefreshDatabase wraps each test in a transaction that never commits: force the deferred check.
+            DB::statement('SET CONSTRAINTS leads_status_position_unique IMMEDIATE');
         });
     })->toThrow(QueryException::class, 'leads_status_position_unique');
 });
