@@ -12,6 +12,7 @@ use Tests\Support\Accounts;
 it('shows the login form to guests', function (): void {
     $this->get('/login')
         ->assertOk()
+        ->assertSee('<title>Iniciar sesión</title>', false)
         ->assertSee('name="_token"', false)
         ->assertSee('action="'.route('login').'"', false)
         ->assertSee('type="password"', false);

@@ -101,7 +101,7 @@ Las rutas se reparten en un archivo por feature, `routes/web/{auth,leads,pipelin
 | Método | URI | Handler | Middleware |
 |---|---|---|---|
 | GET | /login | `LoginController@create` | guest |
-| POST | /login | `LoginController@store` (`LoginRequest`) | guest, `throttle:login` (5/min email+IP, 20/min IP, 50/h cuenta; el 429 vuelve al formulario con un error genérico) |
+| POST | /login | `LoginController@store` (`LoginRequest`) | guest, `throttle:login` (5/min email+IP, 20/min IP, 50/h cuenta; al superar un límite se responde con un 302 de vuelta al formulario con el error genérico "Demasiados intentos", no con un 429) |
 | POST | /logout | `LogoutController` | auth |
 | GET | / | `dashboard` (vista placeholder; las ramas siguientes la sustituyen o redirigen a `pipeline`) | auth, admin |
 | GET | /leads | Livewire `Leads\LeadIndex` (búsqueda y paginación) | auth, admin |
@@ -134,7 +134,7 @@ La validación en el borde se hace así: `LeadForm` usa un Livewire Form object 
   - Alternativa: `AdminUserSeeder`, que lee `ADMIN_EMAIL`/`ADMIN_PASSWORD` del `.env` y, si faltan, falla en lugar de inventar credenciales. Las variables quedan documentadas en `.env.example`, sin valores.
 - **CSRF**: middleware `web` por defecto. Login y logout son formularios con `@csrf`, y el logout es solo POST. Livewire firma y protege sus peticiones con CSRF.
 - **Sesión**: en el login, `session()->regenerate()`. En el logout, `invalidate()` + `regenerateToken()`. Cookies `secure`, `http_only` y `same_site=lax`.
-- **Rate limit**: `RateLimiter::for('login')` con `Limit::perMinute(5)->by(lower(email).'|'.ip)` y `Limit::perMinute(20)->by(ip)`. El `LoginRequest` limpia el contador en un login correcto. Se devuelve un error genérico ("credenciales inválidas") para no permitir enumerar usuarios. La exportación lleva `throttle:10,1`.
+- **Rate limit**: `RateLimiter::for('login')` con `Limit::perMinute(5)->by(lower(email).'|'.ip)` y `Limit::perMinute(20)->by(ip)`. El `LoginRequest` limpia el contador en un login correcto. Se devuelve un error genérico ("Credenciales inválidas") para no permitir enumerar usuarios; al superar un límite, un 302 al formulario con "Demasiados intentos" (idéntico para cuentas existentes e inexistentes). La exportación lleva `throttle:10,1`.
 - **Autorización** (defensa en profundidad):
   - el middleware `admin` (`EnsureUserIsAdmin` → `Gate::allows('access-admin')`, 403) protege todo el grupo;
   - las Policies (`viewAny`, `view`, `create`, `update`, `move`, `export`; `ActivityPolicy::create`) se comprueban también en cada acción Livewire, porque los métodos de Livewire son endpoints públicos;
@@ -206,6 +206,7 @@ Primero `database-expert` (migraciones, CHECK, UNIQUE diferida, índices; primer
   - `it('forbids lead management to non-admins')`
 
 ### feat/kanban-pipeline
+TODO (seguridad N-4, diferido desde admin-auth): el endpoint `livewire/update` debe llevar `auth` + `admin` (p. ej. `Livewire::setUpdateRoute` con esos middleware) en cuanto exista el primer componente con datos; añadir un test que haga POST al endpoint como invitado y como no admin.
 Implementan `laravel-specialist` (Action y componente) y después `ui-polisher` (Blade, SortableJS, estilos), en secuencia. E2E de arrastre con `playwright-expert`.
 - Unit/Action:
   - `it('reorders leads within the same column')`
