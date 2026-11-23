@@ -10,7 +10,10 @@
     @auth
         <header class="border-b border-gray-200 bg-white">
             <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-                <a href="{{ route('dashboard') }}" class="font-semibold">{{ config('app.name') }}</a>
+                <nav class="flex items-center gap-4">
+                    <a href="{{ route('dashboard') }}" class="font-semibold">{{ config('app.name') }}</a>
+                    <a href="{{ route('leads.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Leads</a>
+                </nav>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" class="text-sm text-gray-600 hover:text-gray-900">Cerrar sesión</button>

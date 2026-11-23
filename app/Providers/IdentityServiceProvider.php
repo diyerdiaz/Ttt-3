@@ -13,8 +13,11 @@ use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Livewire\Features\SupportFileUploads\FilePreviewController;
+use Livewire\Livewire;
 
 final class IdentityServiceProvider extends ServiceProvider
 {
@@ -27,6 +30,12 @@ final class IdentityServiceProvider extends ServiceProvider
             : Password::min(12)->max(72));
 
         LoginRateLimiter::register();
+
+        Livewire::setUpdateRoute(static fn (array $handle, string $path) => Route::post($path, $handle)
+            ->middleware(['web', 'auth', 'admin']));
+
+        // The preview route only checks a signed URL; it still must not be reachable without an admin session.
+        FilePreviewController::$middleware = ['web', 'auth', 'admin'];
 
         Event::listen(Failed::class, [SecurityAuditLogger::class, 'failed']);
         Event::listen(Login::class, [SecurityAuditLogger::class, 'loggedIn']);

@@ -34,7 +34,7 @@ Que el borrado vaya en cascada se justifica porque una actividad no tiene sentid
 No uso el tipo `ENUM` nativo de PG porque su `ALTER TYPE` es más rígido (no deja quitar valores) y Laravel lo soporta peor.
 
 **Orden del kanban sin colisiones.** Uso posiciones densas por columna (0..n-1) con tres garantías:
-1. **Serialización**: toda escritura que toque `status/position` (crear lead, mover, cambiar estado desde el formulario) toma `pg_advisory_xact_lock(<clave constante 'leads.board'>)` dentro de la transacción. Al haber un único lock global no pueden darse deadlocks, y la contención es despreciable con un solo admin.
+1. **Serialización**: toda escritura que toque `status/position` (crear lead, mover, cambiar estado desde el formulario) toma `pg_advisory_xact_lock(7301, 1)` (forma de dos enteros: espacio de nombres del módulo de leads + clave del tablero, para no chocar con otros locks) dentro de la transacción; `lockBoard()` lanza `LogicException` si se llama fuera de una transacción, porque el lock se soltaría al instante. Al haber un único lock global no pueden darse deadlocks, y la contención es despreciable con un solo admin.
 2. **Reordenación atómica**: el repositorio reescribe la columna destino en un único `UPDATE leads SET status = $s, position = t.ord - 1 FROM unnest($ids::bigint[]) WITH ORDINALITY t(id, ord) WHERE leads.id = t.id`.
 3. **Red de seguridad**: la UNIQUE diferida permite posiciones intermedias duplicadas dentro de la sentencia y comprueba al hacer COMMIT. En la columna origen queda un hueco, que no colisiona y no necesita compactarse.
 
@@ -54,15 +54,16 @@ Escala: la reordenación es O(n) por columna, adecuada para cientos de leads. Si
 - `EmailAddress::normalize()` (trim + minúsculas) es la única fuente de normalización: VO, mutador de `User`, login y rate limiter.
 - Infra: `EloquentUserRepository`. Consola: `Infrastructure\Console\CreateAdminCommand` (`crm:create-admin`), registrada con `withCommands` en `bootstrap/app.php`; vive en Infrastructure y no en `app/Console` porque la lista blanca de `app/` no admite más raíces. Seeder `AdminUserSeeder` (solo desarrollo; falla en producción).
 - Http: `LoginController`, `LogoutController`, `LoginRequest`, middleware `EnsureUserIsAdmin` y `SecurityHeaders` (global), `RateLimiting\LoginRateLimiter`, `Security\SecurityAuditLogger` (canal de log `security`).
+- Rutas de Livewire: `livewire.update` y `livewire.upload-file` llevan `auth` + `admin` (config y `setUpdateRoute`). `livewire.preview-file` solo comprueba una URL firmada y no tiene subida real detrás (la app no usa uploads), pero `IdentityServiceProvider` le añade igualmente `auth` + `admin` (`FilePreviewController::$middleware`), con test.
 - Providers: `IdentityServiceProvider` agrupa el gate `access-admin` (`Domain\Identity\Abilities`), `Password::defaults()`, el limiter `login` y los listeners de auditoría, para no tocar `AppServiceProvider` desde cada rama.
 
 ### Leads
 - Models: `Lead` (casts `status => LeadStatus`; relación `activities()`).
 - Enums: `LeadStatus: string` con los casos `New, Contacted, Qualified, Proposal, Won, Lost` y los métodos `label(): string`, `isTerminal(): bool`, `canTransitionTo(self $to): bool`, `static boardOrder(): list<self>`.
 - Regla de transición del MVP: **libre entre cualquier par de estados** (incluidos `Won`/`Lost`, en ambos sentidos). `canTransitionTo` devuelve `true` para todo cambio de estado; mover dentro de la misma columna es reorden y siempre válido. Al estar la regla en un único método del enum, endurecerla es un cambio local.
-- VOs: `EmailAddress` (Shared); `PhoneNumber` (trim, solo `+ 0-9 espacio - ( )`, de 6 a 32 caracteres).
+- VOs: `EmailAddress` (Shared); `LeadData` (Domain, no Application: los contratos de repositorio lo reciben y Domain no puede depender de Application); `PhoneNumber` (trim, espacios internos colapsados, al menos 6 dígitos, solo `+ 0-9 espacio - ( )`, de 6 a 32 caracteres).
 - Contracts (segregados por ISP, lo que además evita conflictos de merge entre ramas paralelas):
-  - `LeadRepository`: `find(int $id): ?Lead`; `findOrFail(int $id): Lead`; `create(LeadData $d, int $position): Lead`; `update(Lead $l, LeadData $d): Lead`; `nextPositionIn(LeadStatus $s): int`; `search(?string $term, int $perPage): LengthAwarePaginator`.
+  - `LeadRepository`: `find(int $id): ?Lead`; `findOrFail(int $id): Lead`; `create(LeadData $d, int $position): Lead`; `update(Lead $l, LeadData $d, ?int $position = null): Lead` (`null` conserva la posición actual); `nextPositionIn(LeadStatus $s): int`; `search(?string $term, int $perPage): LengthAwarePaginator`.
   - `LeadBoardRepository`: `lockBoard(): void`; `columns(): array<value-of<LeadStatus>, list<Lead>>`; `findForUpdate(int $id): Lead`; `idsInColumn(LeadStatus $s): list<int>`; `placeColumn(LeadStatus $s, list<int> $orderedIds): void`.
   - `LeadExportSource`: `stream(LeadExportFilter $f): iterable<Lead>` (implementado con `lazyById(500)`, sin cargar todo en memoria).
   - `LeadExporter` (Strategy): `contentType(): string`; `extension(): string`; `write(iterable<Lead> $leads, resource $out): void`.
@@ -71,7 +72,7 @@ Escala: la reordenación es O(n) por columna, adecuada para cientos de leads. Si
   - `UpdateLead(int $id, LeadData): Lead`: si cambia el estado, valida la transición y añade el lead al final de la nueva columna bajo el lock. Emite `LeadUpdated` y, si cambió el estado, `LeadStatusChanged`.
   - `MoveLead(MoveLeadData): void`: ver el flujo en la sección 4.
   - `ExportLeads(LeadExportFilter, LeadExporter, resource $out): void`.
-- DTOs: `LeadData(string $name, ?EmailAddress $email, ?PhoneNumber $phone, ?string $company, ?string $notes, LeadStatus $status)`; `MoveLeadData(int $leadId, LeadStatus $to, list<int> $orderedIds)`; `LeadExportFilter(list<LeadStatus> $statuses)`, donde una lista vacía significa todos.
+- DTOs: `LeadData(string $name, ?EmailAddress $email, ?PhoneNumber $phone, ?string $company, ?string $notes, ?LeadStatus $status)` (invariantes: nombre no vacío y de hasta 150 caracteres; `status` nulo significa "no especificado": un lead nuevo empieza en `New` y uno existente conserva el que tiene, de modo que un formulario abierto hace rato no revierte un cambio de estado posterior); `MoveLeadData(int $leadId, LeadStatus $to, list<int> $orderedIds)`; `LeadExportFilter(list<LeadStatus> $statuses)`, donde una lista vacía significa todos.
 - Excepciones de dominio: `InvalidStatusTransition`, `StaleBoardState`.
 - Events: `LeadCreated(int $leadId)`, `LeadUpdated(int $leadId)` y `LeadStatusChanged(int $leadId, LeadStatus $from, LeadStatus $to)`. Todos implementan `ShouldDispatchAfterCommit`.
 
@@ -206,7 +207,7 @@ Primero `database-expert` (migraciones, CHECK, UNIQUE diferida, índices; primer
   - `it('forbids lead management to non-admins')`
 
 ### feat/kanban-pipeline
-TODO (seguridad N-4, diferido desde admin-auth): el endpoint `livewire/update` debe llevar `auth` + `admin` (p. ej. `Livewire::setUpdateRoute` con esos middleware) en cuanto exista el primer componente con datos; añadir un test que haga POST al endpoint como invitado y como no admin.
+RESUELTO en `feat/lead-management` (seguridad N-4, diferido desde admin-auth): el endpoint `livewire/update` se registra con `Livewire::setUpdateRoute` en `IdentityServiceProvider` con los middleware `web`, `auth` y `admin`, y el de subidas temporales (`livewire.upload-file`) lleva `auth` y `admin` desde `config/livewire.php`. Cubierto por `tests/Feature/Leads/LivewireEndpointSecurityTest.php` (POST como invitado y como no admin). Esta rama solo debe mantener el comportamiento.
 Implementan `laravel-specialist` (Action y componente) y después `ui-polisher` (Blade, SortableJS, estilos), en secuencia. E2E de arrastre con `playwright-expert`.
 - Unit/Action:
   - `it('reorders leads within the same column')`
@@ -265,7 +266,8 @@ Implementa `laravel-specialist`; audita `security-scanner` (inyección CSV).
 
 ## Rendimiento y caché del MVP (ver ~/.claude/CLAUDE.md §3.1)
 - **Kanban**: 1 consulta para todos los leads del tablero (`select` de columnas de tarjeta + `withCount('activities')` si se muestra), agrupado en PHP por `status`. Índice `(status, position)` ya cubre el orden. Test: `it('renders the board with a constant number of queries')` con 5 y con 200 leads → mismo número de queries.
-- **Listado de leads**: `paginate(25)` + índice en `lower(email)` y `created_at`; búsqueda por nombre/empresa con índice `pg_trgm` (GIN) solo si se añade búsqueda.
+- **Listado de leads**: `paginate(25)` ordenado por `id DESC` (la PK ya cubre el orden; no hay índice en `created_at`) y solo las columnas que pinta la vista (`id, name, email, phone, company, status`). La tabla solo lleva la PK y el UNIQUE `(status, position)`: no hay índice en `lower(email)`, porque la búsqueda es por subcadena (`ILIKE '%término%'`) y un índice B-tree no la sirve.
+- **Búsqueda: índice trigram aplazado (YAGNI)**: medido 4 ms con 1000 leads (escaneo secuencial). `pg_trgm` + índice GIN no hace falta hasta superar unos 50 000 leads; entonces se añade en una migración nueva, con `EXPLAIN ANALYZE` antes y después.
 - **Timeline de actividades**: índice `(lead_id, occurred_at DESC, id DESC)`; paginado/limitado a las N últimas.
 - **Export CSV**: `streamDownload` + `lazyById(500)` + `select` mínimo → memoria constante. Test: `it('exports 5000 leads without loading them all in memory')` (pico de memoria acotado).
 - **Caché**: el MVP NO cachea el tablero (un solo admin, datos que cambian en cada drag → invalidación constante, coste > beneficio). Se cachean solo los conteos por estado del tablero (`leads:board:counts:v1`, TTL 5 min) invalidados por el evento `LeadStatusChanged` y por alta de lead, con test de invalidación. Driver `database`.
