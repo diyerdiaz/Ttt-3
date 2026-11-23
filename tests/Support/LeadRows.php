@@ -21,4 +21,12 @@ final class LeadRows
             'position' => 0,
         ], $overrides));
     }
+
+    /**
+     * The UNIQUE (status, position) constraint is deferred; force the check now (inside a test transaction it never commits).
+     */
+    public static function assertPositionsAreUnique(): void
+    {
+        DB::statement('SET CONSTRAINTS leads_status_position_unique IMMEDIATE');
+    }
 }
