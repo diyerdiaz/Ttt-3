@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Monolog\Formatter\JsonFormatter;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -68,9 +69,11 @@ return [
         ],
 
         'security' => [
-            'driver' => 'single',
+            'driver' => 'daily',
             'path' => storage_path('logs/security.log'),
             'level' => 'info',
+            'days' => (int) env('SECURITY_LOG_DAYS', 90),
+            'formatter' => JsonFormatter::class,
             'replace_placeholders' => true,
         ],
 

@@ -18,6 +18,8 @@ final readonly class SecurityAuditLogger
 {
     public const string CHANNEL = 'security';
 
+    private const int MAX_USER_AGENT_LENGTH = 512;
+
     public function __construct(private Request $request) {}
 
     public function failed(): void
@@ -63,6 +65,13 @@ final readonly class SecurityAuditLogger
      */
     private function requestContext(): array
     {
-        return ['ip' => $this->request->ip(), 'user_agent' => $this->request->userAgent()];
+        return ['ip' => $this->request->ip(), 'user_agent' => $this->userAgent()];
+    }
+
+    private function userAgent(): ?string
+    {
+        $userAgent = $this->request->userAgent();
+
+        return $userAgent === null ? null : mb_substr($userAgent, 0, self::MAX_USER_AGENT_LENGTH);
     }
 }
