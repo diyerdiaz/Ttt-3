@@ -192,3 +192,9 @@ it('still lets the pagination property be set to a page number', function (): vo
 
     Livewire::test(LeadIndex::class)->set('paginators.page', 2)->assertOk();
 });
+
+it('links the lead name to its detail page', function (): void {
+    $lead = Lead::factory()->create(['name' => 'Ada Lovelace']);
+
+    $this->get('/leads')->assertSee('<a href="'.route('leads.show', $lead->id).'"', false);
+});

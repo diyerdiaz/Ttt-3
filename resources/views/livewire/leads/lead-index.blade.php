@@ -30,7 +30,9 @@
             <tbody class="divide-y divide-gray-100">
                 @forelse ($leads as $lead)
                     <tr wire:key="lead-{{ $lead->id }}">
-                        <td class="px-3 py-2 font-medium">{{ $lead->name }}</td>
+                        <td class="px-3 py-2 font-medium">
+                            <a href="{{ route('leads.show', $lead->id) }}" wire:navigate class="hover:underline">{{ $lead->name }}</a>
+                        </td>
                         <td class="px-3 py-2">{{ $lead->email }}</td>
                         <td class="px-3 py-2">{{ $lead->phone }}</td>
                         <td class="px-3 py-2">{{ $lead->company }}</td>
