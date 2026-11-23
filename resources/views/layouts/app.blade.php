@@ -11,7 +11,8 @@
         <header class="border-b border-gray-200 bg-white">
             <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
                 <nav class="flex items-center gap-4">
-                    <a href="{{ route('dashboard') }}" class="font-semibold">{{ config('app.name') }}</a>
+                    <a href="{{ route('pipeline') }}" class="font-semibold">{{ config('app.name') }}</a>
+                    <a href="{{ route('pipeline') }}" class="text-sm text-gray-600 hover:text-gray-900">Pipeline</a>
                     <a href="{{ route('leads.index') }}" class="text-sm text-gray-600 hover:text-gray-900">Leads</a>
                 </nav>
                 <form method="POST" action="{{ route('logout') }}">

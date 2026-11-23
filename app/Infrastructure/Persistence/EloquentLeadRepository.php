@@ -18,6 +18,8 @@ final class EloquentLeadRepository implements LeadBoardRepository, LeadRepositor
 {
     private const array LISTING_COLUMNS = ['id', 'name', 'email', 'phone', 'company', 'status'];
 
+    private const array CARD_COLUMNS = ['id', 'name', 'company', 'status', 'position'];
+
     private const int LOCK_NAMESPACE = 7301;
 
     private const int BOARD_LOCK = 1;
@@ -37,6 +39,47 @@ final class EloquentLeadRepository implements LeadBoardRepository, LeadRepositor
         }
 
         DB::select('select pg_advisory_xact_lock(?, ?)', self::lockKey());
+    }
+
+    public function columns(): array
+    {
+        $columns = array_fill_keys(array_map(static fn (LeadStatus $status): string => $status->value, LeadStatus::boardOrder()), []);
+
+        foreach (Lead::query()->select(self::CARD_COLUMNS)->orderBy('status')->orderBy('position')->get() as $lead) {
+            $columns[$lead->status->value][] = $lead;
+        }
+
+        return $columns;
+    }
+
+    public function findForUpdate(int $id): Lead
+    {
+        return Lead::query()->lockForUpdate()->findOrFail($id);
+    }
+
+    public function idsInColumn(LeadStatus $status): array
+    {
+        $ids = [];
+
+        foreach (Lead::query()->where('status', $status)->orderBy('position')->get(['id']) as $lead) {
+            $ids[] = $lead->id;
+        }
+
+        return $ids;
+    }
+
+    public function placeColumn(LeadStatus $status, array $orderedIds): void
+    {
+        if ($orderedIds === []) {
+            return;
+        }
+
+        DB::update(
+            'update leads set status = ?, position = t.ord - 1, updated_at = now()
+             from unnest(?::bigint[]) with ordinality as t(id, ord)
+             where leads.id = t.id and (leads.status <> ? or leads.position <> t.ord - 1)',
+            [$status->value, '{'.implode(',', $orderedIds).'}', $status->value],
+        );
     }
 
     public function find(int $id): ?Lead

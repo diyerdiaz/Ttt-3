@@ -22,9 +22,13 @@ it('forbids authenticated non-admin users', function (): void {
     $this->actingAs(Accounts::user())->get('/')->assertForbidden();
 });
 
-it('shows the dashboard placeholder to admins', function (): void {
+it('sends admins from the dashboard to the pipeline', function (): void {
+    $this->actingAs(Accounts::admin())->get('/')->assertRedirect('/pipeline');
+});
+
+it('shows the navigation and the logout form to admins', function (): void {
     $this->actingAs(Accounts::admin())
-        ->get('/')
+        ->get('/pipeline')
         ->assertOk()
         ->assertSee('Leads')
         ->assertSee('action="'.route('logout').'"', false)
@@ -52,14 +56,14 @@ it('lets an admin through the middleware and rejects guests and non-admins with 
     expect($forbidden)->toThrow(HttpException::class);
 });
 
-it('adds no queries beyond loading the user on an authenticated dashboard request', function (): void {
+it('adds no queries beyond loading the user on an authenticated dashboard redirect', function (): void {
     $admin = Accounts::admin();
 
     // The test session driver is "array", so the only query is the user lookup; with the
     // database driver in production the session read/write add their own, independent of the admin check.
     DB::enableQueryLog();
     DB::flushQueryLog();
-    $this->withSession([AuthFacade::guard()->getName() => $admin->getKey()])->get('/')->assertOk();
+    $this->withSession([AuthFacade::guard()->getName() => $admin->getKey()])->get('/')->assertRedirect('/pipeline');
     $queries = DB::getQueryLog();
 
     expect($queries)->toHaveCount(1)
