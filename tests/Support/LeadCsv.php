@@ -26,7 +26,7 @@ final class LeadCsv
             'company' => 'Analytical',
             'notes' => 'Primera nota',
             'status' => LeadStatus::Won,
-            'created_at' => '2026-11-20 10:30:00',
+            'created_at' => '2026-11-20 15:30:00',
         ], $attributes));
     }
 
