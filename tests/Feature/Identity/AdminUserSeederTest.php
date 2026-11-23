@@ -37,6 +37,17 @@ it('fails without creating any user when the env password is weak', function ():
     expect(User::query()->count())->toBe(0);
 });
 
+it('fails without creating any user when the env password is empty or blank', function (string $password): void {
+    config(['crm.admin.email' => 'boss@example.com', 'crm.admin.password' => $password]);
+
+    expect(fn () => $this->seed(AdminUserSeeder::class))->toThrow(RuntimeException::class, 'ADMIN_PASSWORD');
+    expect(User::query()->count())->toBe(0);
+})->with([
+    'empty' => [''],
+    'spaces' => ['   '],
+    'twelve spaces' => [str_repeat(' ', 12)],
+]);
+
 it('is idempotent when the admin already exists', function (): void {
     config(['crm.admin.email' => 'boss@example.com', 'crm.admin.password' => Accounts::STRONG_PASSWORD]);
 
