@@ -77,11 +77,14 @@ Escala: la reordenación es O(n) por columna, adecuada para cientos de leads. Si
 - Events: `LeadCreated(int $leadId)`, `LeadUpdated(int $leadId)` y `LeadStatusChanged(int $leadId, LeadStatus $from, LeadStatus $to)`. Todos implementan `ShouldDispatchAfterCommit`.
 
 ### Activities
-- Models: `Activity` (casts `type => ?ActivityType`, `occurred_at => immutable_datetime`). Enums: `ActivityType: string` con `Call, Email, Meeting, Note` y `label()`.
-- Contracts: `ActivityRepository`: `create(int $leadId, ActivityData $d): Activity`; `forLead(int $leadId, int $perPage): LengthAwarePaginator` (ordenado por `occurred_at DESC, id DESC`).
-- Actions: `LogActivity(int $leadId, ActivityData): Activity`, que emite `ActivityLogged(int $activityId, int $leadId)`.
-- DTO: `ActivityData(string $description, CarbonImmutable $occurredAt, ?ActivityType $type)`.
-- Listener opcional (Observer): `RecordStatusChangeActivity` escucha `LeadStatusChanged` y registra una actividad `note`. Es el único acoplamiento entre contextos y va por evento. Si se incluye, lo hace `feat/lead-activities`.
+- Models: `Activity` (casts `type => ?ActivityType`, `occurred_at => immutable_datetime`; relación `lead()`, necesaria para `Activity::factory()->for($lead)`). `Lead::activities()` es un `HasMany`. Enums: `ActivityType: string` con `Call, Email, Meeting, Note` y `label()` (Llamada, Correo, Reunión, Nota).
+- Contracts: `ActivityRepository`: `create(int $leadId, ActivityData $d): Activity`; `forLead(int $leadId, int $perPage): LengthAwarePaginator` (ordenado por `occurred_at DESC, id DESC`, solo las columnas `id, type, description, occurred_at`: 2 consultas, count + select, con independencia del número de actividades).
+- Actions: `LogActivity(int $leadId, ActivityData): Activity`, que emite `ActivityLogged(int $activityId, int $leadId)` (`ShouldDispatchAfterCommit`). No abre transacción propia: es un único INSERT atómico.
+- VO: `ActivityData(string $description, CarbonImmutable $occurredAt, ?ActivityType $type)` vive en `Domain\Activities\ValueObjects` (no en `Application\DTOs`, igual que `LeadData`: el contrato del repositorio lo recibe y Domain no puede depender de Application). Invariantes: descripción no vacía (también si solo hay separadores Unicode), de hasta 5000 caracteres y sin bytes NUL. El saneado del texto del navegador (`TextInput::multiLine`) ocurre en el borde HTTP.
+- Policy: `ActivityPolicy` con `viewAny` y `create`, ambas delegadas en `access-admin`. `viewAny` es una adición al diseño: `ActivityTimeline` la comprueba al montarse y al renderizarse, porque el listado de actividades no cuelga de ninguna otra policy sin cargar el lead otra vez.
+- Decisión del orquestador (2026-11-22): NO hay listener `RecordStatusChangeActivity` en el MVP (YAGNI).
+- Zona horaria: la conexión `pgsql` fija `timezone = UTC` (`config/database.php`). Sin ello PostgreSQL interpreta en su zona horaria de servidor las fechas sin offset que escribe Laravel y `occurred_at` se desplazaba horas (test `DatabaseConnectionTest`).
+- Http: `GET /leads/{lead}` (`leads.show`) vive en `routes/web/leads.php` (mismo prefijo y middleware que edit, y el orden frente a `/leads/create` importa) y no en `activities.php`: el timeline va embebido y sus acciones viajan por `livewire.update`, así que no hay rutas propias de actividades. `LeadShow` carga el lead con un `#[Computed]` (una sola consulta por petición) y embebe `ActivityTimeline`. La propiedad del formulario es `occurredAt` (camelCase) y las acciones validan `occurred_at` entre 1900-01-01 y `now()+1 day`, formato `Y-m-d\TH:i` (input `datetime-local`).
 
 ## 3. Patrones y SOLID
 | Patrón | Dónde | Principio |
