@@ -240,8 +240,8 @@ it('shows a readable error instead of failing when the status transition is refu
     expect($lead->fresh()?->status)->toBe(LeadStatus::Won);
 });
 
-it('turns values of the wrong type into validation errors', function (string $field, mixed $value): void {
-    Livewire::test(LeadForm::class)->set('form.name', 'Ada')->set("form.{$field}", $value)->assertHasErrors("form.{$field}");
+it('answers 422 to values of the wrong type instead of failing', function (string $field, mixed $value): void {
+    Livewire::test(LeadForm::class)->set('form.name', 'Ada')->set("form.{$field}", $value)->assertStatus(422);
 })->with([
     'array name' => ['name', ['x']],
     'array email' => ['email', ['x']],
@@ -249,17 +249,19 @@ it('turns values of the wrong type into validation errors', function (string $fi
     'array status' => ['status', ['x']],
 ]);
 
-it('treats a null sent for a text field as empty', function (): void {
-    Livewire::test(LeadForm::class)->set('form.name', null)->call('save')->assertHasErrors(['form.name' => 'required']);
-});
+it('answers 422 to nested paths and nulls on the text fields', function (string $path, mixed $value): void {
+    Livewire::test(LeadForm::class)->set($path, $value)->assertStatus(422);
+})->with([
+    'null name' => ['form.name', null],
+    'nested index on name' => ['form.name.0', 'x'],
+    'nested key on notes' => ['form.notes.a.b', 'x'],
+]);
 
 it('stores text cleaned of control characters and invalid UTF-8', function (): void {
     Livewire::test(LeadForm::class)
-        ->set('form.name', 'Ada  Lovelace
-II')
-        ->set('form.company', 'AnaÃlytical')
-        ->set('form.notes', 'line 1
-line	2 ')
+        ->set('form.name', "Ada\0 Love\x07lace\nII")
+        ->set('form.company', "Ana\xC3lytical")
+        ->set('form.notes', "line 1\r\nline\t2\0\x01")
         ->call('save')
         ->assertHasNoErrors();
 
@@ -271,7 +273,7 @@ line	2 ')
 });
 
 it('does not fail on a name made only of control characters', function (): void {
-    Livewire::test(LeadForm::class)->set('form.name', ' ')->call('save')->assertHasErrors(['form.name' => 'required']);
+    Livewire::test(LeadForm::class)->set('form.name', "\0\x07")->call('save')->assertHasErrors(['form.name' => 'required']);
 
     expect(Lead::query()->count())->toBe(0);
 });

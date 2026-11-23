@@ -1,3 +1,4 @@
+@use('App\Domain\Leads\Enums\LeadStatus')
 <div class="mx-auto max-w-2xl space-y-4">
     <h1 class="text-xl font-semibold">{{ $leadId === null ? 'Nuevo lead' : 'Editar lead' }}</h1>
 
@@ -20,7 +21,7 @@
             </div>
             <div>
                 <label for="phone" class="block text-sm font-medium">Teléfono</label>
-                <input id="phone" type="tel" wire:model.blur="form.phone" maxlength="32"
+                <input id="phone" type="tel" wire:model.blur="form.phone" maxlength="64"
                        @error('form.phone') aria-invalid="true" aria-describedby="phone-error" @enderror
                        class="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm">
                 @error('form.phone') <p id="phone-error" class="mt-1 text-sm text-red-700">{{ $message }}</p> @enderror
@@ -40,7 +41,7 @@
                 <select id="status" wire:model="form.status"
                         @error('form.status') aria-invalid="true" aria-describedby="status-error" @enderror
                         class="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm">
-                    @foreach (\App\Domain\Leads\Enums\LeadStatus::boardOrder() as $status)
+                    @foreach (LeadStatus::boardOrder() as $status)
                         <option value="{{ $status->value }}">{{ $status->label() }}</option>
                     @endforeach
                 </select>

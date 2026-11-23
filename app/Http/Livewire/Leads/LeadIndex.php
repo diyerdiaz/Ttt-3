@@ -6,11 +6,13 @@ namespace App\Http\Livewire\Leads;
 
 use App\Domain\Leads\Contracts\LeadRepository;
 use App\Domain\Leads\Models\Lead;
+use App\Http\Support\TextInput;
 use Illuminate\Contracts\View\View;
 use Illuminate\Support\Facades\Gate;
 use Livewire\Attributes\Url;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Symfony\Component\HttpFoundation\Response;
 
 final class LeadIndex extends Component
 {
@@ -26,11 +28,27 @@ final class LeadIndex extends Component
     public function mount(): void
     {
         Gate::authorize('viewAny', Lead::class);
+
+        $this->search = TextInput::singleLine($this->search);
+    }
+
+    public function updating(string $name, mixed $value): void
+    {
+        $isSearch = $name === 'search' || str_starts_with($name, 'search.');
+
+        if ($isSearch && ($name !== 'search' || ! is_string($value))) {
+            abort(Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
     }
 
     public function updatingSearch(): void
     {
         $this->resetPage();
+    }
+
+    public function updatedSearch(): void
+    {
+        $this->search = TextInput::singleLine($this->search);
     }
 
     public function render(LeadRepository $leads): View

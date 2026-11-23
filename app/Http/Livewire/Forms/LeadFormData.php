@@ -9,6 +9,7 @@ use App\Domain\Leads\Models\Lead;
 use App\Domain\Leads\ValueObjects\LeadData;
 use App\Domain\Leads\ValueObjects\PhoneNumber;
 use App\Domain\Shared\ValueObjects\EmailAddress;
+use App\Http\Support\TextInput;
 use Closure;
 use Illuminate\Validation\Rule;
 use Livewire\Form;
@@ -35,7 +36,7 @@ final class LeadFormData extends Form
         return [
             'name' => ['required', 'string', 'max:150'],
             'email' => ['nullable', 'string', 'email:filter', 'max:254'],
-            'phone' => ['nullable', 'string', 'max:'.PhoneNumber::MAX_LENGTH, $this->phoneRule()],
+            'phone' => ['nullable', 'string', $this->phoneRule()],
             'company' => ['nullable', 'string', 'max:150'],
             'notes' => ['nullable', 'string', 'max:5000'],
             'status' => ['required', Rule::enum(LeadStatus::class)],
@@ -81,27 +82,33 @@ final class LeadFormData extends Form
     }
 
     /**
-     * Livewire skips TrimStrings, so surrounding whitespace is removed here before validating.
+     * Livewire skips TrimStrings, so the text is cleaned here: surrounding whitespace, control
+     * characters and invalid UTF-8 are removed. Idempotent, so it runs on every update and before saving.
      */
-    public function trimInputs(): void
+    public function sanitize(): void
     {
-        foreach (['name', 'email', 'phone', 'company', 'notes'] as $field) {
-            $this->{$field} = trim($this->{$field});
+        foreach (['name', 'email', 'phone', 'company', 'status'] as $field) {
+            $this->{$field} = TextInput::singleLine($this->{$field});
         }
+
+        $this->notes = TextInput::multiLine($this->notes);
     }
 
-    public function toDto(): LeadData
+    /**
+     * Expects sanitize() to have run. Without the status the data leaves it as it is stored.
+     */
+    public function toDto(bool $withStatus = true): LeadData
     {
         $email = $this->blankToNull($this->email);
         $phone = $this->blankToNull($this->phone);
 
         return new LeadData(
-            name: trim($this->name),
+            name: $this->name,
             email: $email === null ? null : EmailAddress::fromString($email),
             phone: $phone === null ? null : PhoneNumber::fromString($phone),
             company: $this->blankToNull($this->company),
             notes: $this->blankToNull($this->notes),
-            status: LeadStatus::from($this->status),
+            status: $withStatus ? LeadStatus::from($this->status) : null,
         );
     }
 
@@ -116,8 +123,6 @@ final class LeadFormData extends Form
 
     private function blankToNull(string $value): ?string
     {
-        $trimmed = trim($value);
-
-        return $trimmed === '' ? null : $trimmed;
+        return $value === '' ? null : $value;
     }
 }
