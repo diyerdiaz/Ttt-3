@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Controller;
+use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Tests\Support\ArchRules;
 
 arch()->preset()->php();
@@ -36,4 +37,10 @@ arch('form requests are final', fn () => ArchRules::assertFinalClasses('App\Http
 
 it('keeps app/ restricted to the allowed layer directories', function (): void {
     expect(ArchRules::unexpectedAppEntries(dirname(__DIR__, 2).'/app'))->toBe([]);
+});
+
+arch('lead events are delivered after commit', function (): void {
+    foreach (['LeadCreated', 'LeadUpdated', 'LeadStatusChanged'] as $event) {
+        expect("App\\Domain\\Leads\\Events\\{$event}")->toImplement(ShouldDispatchAfterCommit::class);
+    }
 });

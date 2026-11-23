@@ -57,3 +57,44 @@ it('dispatches LeadStatusChanged only when the status changes', function (): voi
 it('fails when the lead does not exist', function (): void {
     LeadActions::update(new InMemoryLeadStore)(99, new LeadData('Ada'));
 })->throws(ModelNotFoundException::class);
+
+it('keeps the current status when the data does not specify one', function (): void {
+    $store = new InMemoryLeadStore;
+    $lead = $store->seed(LeadStatus::Won, 3);
+    $log = [];
+    $events = LeadActions::recordingDispatcher([LeadUpdated::class, LeadStatusChanged::class], $log);
+
+    $updated = LeadActions::update($store, $events)((int) $lead->id, new LeadData('Renamed'));
+
+    expect($updated->status)->toBe(LeadStatus::Won)
+        ->and($updated->position)->toBe(3)
+        ->and($updated->name)->toBe('Renamed')
+        ->and($log)->toHaveCount(1)->and($log[0])->toBeInstanceOf(LeadUpdated::class);
+});
+
+it('does not dispatch LeadUpdated when nothing changed', function (): void {
+    $store = new InMemoryLeadStore;
+    $lead = $store->seed(LeadStatus::New, 0);
+    $log = [];
+    $events = LeadActions::recordingDispatcher([LeadUpdated::class, LeadStatusChanged::class], $log);
+    $action = LeadActions::update($store, $events);
+
+    $action((int) $lead->id, new LeadData('Same'));
+    $log = [];
+    $action((int) $lead->id, new LeadData('Same'));
+
+    expect($log)->toBe([]);
+});
+
+it('allows every pair of statuses under the current rules', function (LeadStatus $from, LeadStatus $to): void {
+    $store = new InMemoryLeadStore;
+    $lead = $store->seed($from, 0);
+
+    expect(LeadActions::update($store)((int) $lead->id, new LeadData('Ada', status: $to))->status)->toBe($to);
+})->with(fn (): Generator => (function (): Generator {
+    foreach (LeadStatus::cases() as $from) {
+        foreach (LeadStatus::cases() as $to) {
+            yield "{$from->value} to {$to->value}" => [$from, $to];
+        }
+    }
+})());

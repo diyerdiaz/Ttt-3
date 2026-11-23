@@ -137,7 +137,7 @@ describe('search', function (): void {
 it('takes the board advisory lock that other connections can see', function (): void {
     config(['database.connections.second' => config('database.connections.'.config('database.default'))]);
     $other = DB::connection('second');
-    $probe = static fn (): bool => (bool) $other->selectOne('select pg_try_advisory_xact_lock(?) as free', [EloquentLeadRepository::lockKey()])->free;
+    $probe = static fn (): bool => (bool) $other->selectOne('select pg_try_advisory_xact_lock(?, ?) as free', [...EloquentLeadRepository::lockKey()])->free;
 
     expect($probe())->toBeTrue();
 
@@ -146,4 +146,40 @@ it('takes the board advisory lock that other connections can see', function (): 
     expect($probe())->toBeFalse();
 
     DB::purge('second');
+});
+
+it('uses the namespaced two-integer advisory lock form', function (): void {
+    [$namespace, $key] = EloquentLeadRepository::lockKey();
+
+    expect($namespace)->toBeInt()->and($key)->toBeInt();
+});
+
+it('refuses to take the board lock outside a transaction', function (): void {
+    DB::rollBack();
+
+    expect(DB::transactionLevel())->toBe(0);
+
+    app(LeadBoardRepository::class)->lockBoard();
+})->throws(LogicException::class, 'transaction');
+
+it('keeps the stored status when the data leaves it unspecified', function (): void {
+    $lead = Lead::factory()->status(LeadStatus::Qualified)->create(['position' => 4]);
+
+    app(LeadRepository::class)->update($lead, new LeadData('Renamed'));
+
+    expect($lead->fresh()?->status)->toBe(LeadStatus::Qualified)->and($lead->fresh()?->position)->toBe(4);
+});
+
+it('creates a lead in the status of the data', function (): void {
+    $lead = app(LeadRepository::class)->create(new LeadData('Ada', status: LeadStatus::Lost), 0);
+
+    expect($lead->fresh()?->status)->toBe(LeadStatus::Lost);
+});
+
+it('does not list the columns the board and the list do not render', function (): void {
+    Lead::factory()->create();
+
+    $attributes = array_keys(app(LeadRepository::class)->search(null, 10)->items()[0]->getAttributes());
+
+    expect($attributes)->not->toContain('position')->not->toContain('created_at')->not->toContain('notes');
 });

@@ -11,6 +11,7 @@ use App\Domain\Leads\Events\LeadUpdated;
 use App\Domain\Leads\Models\Lead;
 use App\Domain\Leads\ValueObjects\LeadData;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Tests\Support\LeadRows;
 
@@ -26,7 +27,7 @@ it('appends a new lead at the end of its status column', function (): void {
         ->and(app(CreateLead::class)(new LeadData('Edsger'))->fresh()?->position)->toBe(0);
 });
 
-it('assigns distinct positions to leads created concurrently in the same column', function (): void {
+it('assigns consecutive distinct positions to leads created one after another', function (): void {
     foreach (range(1, 6) as $i) {
         app(CreateLead::class)(new LeadData("Lead {$i}"));
     }
@@ -96,4 +97,71 @@ it('delivers events to real listeners once the transaction commits', function ()
     app(UpdateLead::class)((int) $lead->id, new LeadData('Ada', status: LeadStatus::Won));
 
     expect($received)->toBe([LeadStatus::Won]);
+});
+
+it('keeps the stored status when updating without a specified one', function (): void {
+    $lead = Lead::factory()->status(LeadStatus::Won)->create(['position' => 2]);
+    $received = [];
+    Event::listen(LeadStatusChanged::class, static function (LeadStatusChanged $event) use (&$received): void {
+        $received[] = $event;
+    });
+
+    app(UpdateLead::class)((int) $lead->id, new LeadData('Renamed'));
+
+    expect($lead->fresh()?->status)->toBe(LeadStatus::Won)
+        ->and($lead->fresh()?->position)->toBe(2)
+        ->and($received)->toBe([]);
+});
+
+it('does not dispatch LeadUpdated when an update changes nothing', function (): void {
+    $lead = Lead::factory()->status(LeadStatus::New)->create(['name' => 'Same', 'email' => null, 'phone' => null, 'company' => null, 'notes' => null]);
+    Event::fake([LeadUpdated::class]);
+
+    app(UpdateLead::class)((int) $lead->id, new LeadData('Same'));
+
+    Event::assertNotDispatched(LeadUpdated::class);
+});
+
+describe('after commit delivery', function (): void {
+    it('holds the events back while the surrounding transaction is open and drops them on rollback', function (): void {
+        $received = [];
+        Event::listen([LeadCreated::class, LeadStatusChanged::class], static function (object $event) use (&$received): void {
+            $received[] = $event::class;
+        });
+        $lead = Lead::factory()->status(LeadStatus::New)->create();
+
+        DB::beginTransaction();
+        app(CreateLead::class)(new LeadData('Ada'));
+        app(UpdateLead::class)((int) $lead->id, new LeadData('Ada', status: LeadStatus::Won));
+        expect($received)->toBe([]);
+        DB::rollBack();
+
+        expect($received)->toBe([]);
+    });
+
+    it('delivers the held events once the surrounding transaction commits', function (): void {
+        $received = [];
+        Event::listen(LeadCreated::class, static function (LeadCreated $event) use (&$received): void {
+            $received[] = $event->leadId;
+        });
+
+        DB::beginTransaction();
+        $lead = app(CreateLead::class)(new LeadData('Ada'));
+        expect($received)->toBe([]);
+        DB::commit();
+
+        expect($received)->toBe([(int) $lead->id]);
+    });
+
+    it('drops the events of an action that fails and rolls back', function (): void {
+        $received = [];
+        Event::listen(LeadCreated::class, static function (LeadCreated $event) use (&$received): void {
+            $received[] = $event;
+        });
+        Lead::factory()->status(LeadStatus::New)->create(['position' => 0]);
+
+        // A nonexistent id makes UpdateLead throw inside its transaction; nothing may leak.
+        expect(fn () => app(UpdateLead::class)(0, new LeadData('Ghost')))->toThrow(ModelNotFoundException::class)
+            ->and($received)->toBe([]);
+    });
 });
