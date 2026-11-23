@@ -20,6 +20,8 @@ final class CreateAdminCommand extends Command
 {
     private const int MAX_NAME_LENGTH = 120;
 
+    private const string NEEDS_TERMINAL = 'Este comando necesita una terminal interactiva para pedir la contraseña.';
+
     public function handle(CreateAdminUser $createAdmin): int
     {
         try {
@@ -39,7 +41,19 @@ final class CreateAdminCommand extends Command
             return self::FAILURE;
         }
 
+        if (! $this->input->isInteractive()) {
+            $this->components->error(self::NEEDS_TERMINAL);
+
+            return self::FAILURE;
+        }
+
         $password = $this->secretAnswer('Contraseña');
+
+        if (trim($password) === '') {
+            $this->components->error('La contraseña no puede estar vacía. '.self::NEEDS_TERMINAL);
+
+            return self::FAILURE;
+        }
 
         if ($password !== $this->secretAnswer('Confirma la contraseña')) {
             $this->components->error('Las contraseñas no coinciden.');
