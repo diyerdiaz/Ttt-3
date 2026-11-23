@@ -177,3 +177,18 @@ it('keeps the number of queries constant while searching and paginating', functi
 
     expect($measure())->toBe($few);
 });
+
+it('answers 422 to updates of properties the page does not expose for writing', function (string $path, mixed $value): void {
+    Livewire::test(LeadIndex::class)->set($path, $value)->assertStatus(422);
+})->with([
+    'paginators as scalar' => ['paginators', 'x'],
+    'paginators as array' => ['paginators', ['page' => 'x']],
+    'unknown page name' => ['paginators.other', 1],
+    'nested page value' => ['paginators.page.0', 1],
+]);
+
+it('still lets the pagination property be set to a page number', function (): void {
+    Lead::factory()->count(30)->create();
+
+    Livewire::test(LeadIndex::class)->set('paginators.page', 2)->assertOk();
+});

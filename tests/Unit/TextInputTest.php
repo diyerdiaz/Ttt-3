@@ -27,3 +27,9 @@ it('replaces invalid UTF-8 so the value can be encoded as JSON', function (): vo
         ->and(json_encode($clean, JSON_THROW_ON_ERROR))->toBeString()
         ->and(TextInput::multiLine("a\xC3\xC3b"))->toStartWith('a')->toEndWith('b');
 });
+
+it('treats Unicode separators as whitespace', function (): void {
+    expect(TextInput::singleLine("\u{00A0}Ada\u{3000}"))->toBe('Ada')
+        ->and(TextInput::singleLine("\u{00A0}\u{2003}"))->toBe('')
+        ->and(TextInput::multiLine("\u{00A0}a\u{00A0}b\u{00A0}"))->toBe('a b');
+});

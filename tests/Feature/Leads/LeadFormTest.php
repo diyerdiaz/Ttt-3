@@ -281,3 +281,21 @@ it('does not fail on a name made only of control characters', function (): void 
 it('rejects lead ids that are not plain numbers or do not fit an integer', function (string $uri): void {
     $this->get($uri)->assertNotFound();
 })->with(['/leads/99999999999999999999/edit', '/leads/1e3/edit', '/leads/-1/edit', '/leads/0x1/edit']);
+
+it('answers 422 to updates that target the form object itself instead of a field', function (string $path, mixed $value): void {
+    Livewire::test(LeadForm::class)->set($path, $value)->assertStatus(422);
+})->with([
+    'scalar over the form' => ['form', 'str'],
+    'array over the form' => ['form', ['name' => 'x']],
+    'unknown field' => ['form.nope', 'x'],
+]);
+
+it('rejects a name made only of Unicode separators', function (string $name): void {
+    Livewire::test(LeadForm::class)->set('form.name', $name)->call('save')->assertHasErrors(['form.name' => 'required']);
+
+    expect(Lead::query()->count())->toBe(0);
+})->with([
+    'no-break space' => ["\u{00A0}"],
+    'em space and ideographic space' => ["\u{2003}\u{3000}"],
+    'line separator' => ["\u{2028}"],
+]);

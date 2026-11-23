@@ -10,9 +10,12 @@ use App\Domain\Leads\Events\LeadStatusChanged;
 use App\Domain\Leads\Events\LeadUpdated;
 use App\Domain\Leads\Models\Lead;
 use App\Domain\Leads\ValueObjects\LeadData;
+use App\Domain\Shared\Contracts\TransactionManager;
+use App\Infrastructure\Persistence\EloquentLeadRepository;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Tests\Support\FailsAfterCallbackTransactionManager;
 use Tests\Support\LeadRows;
 
 it('appends a new lead at the end of its status column', function (): void {
@@ -153,15 +156,16 @@ describe('after commit delivery', function (): void {
         expect($received)->toBe([(int) $lead->id]);
     });
 
-    it('drops the events of an action that fails and rolls back', function (): void {
+    it('drops the events of an action that fails after dispatching them', function (): void {
         $received = [];
         Event::listen(LeadCreated::class, static function (LeadCreated $event) use (&$received): void {
             $received[] = $event;
         });
-        Lead::factory()->status(LeadStatus::New)->create(['position' => 0]);
+        $repository = app(EloquentLeadRepository::class);
+        $create = new CreateLead($repository, $repository, new FailsAfterCallbackTransactionManager(app(TransactionManager::class)), app('events'));
 
-        // A nonexistent id makes UpdateLead throw inside its transaction; nothing may leak.
-        expect(fn () => app(UpdateLead::class)(0, new LeadData('Ghost')))->toThrow(ModelNotFoundException::class)
-            ->and($received)->toBe([]);
+        expect(fn () => $create(new LeadData('Ada')))->toThrow(RuntimeException::class)
+            ->and($received)->toBe([])
+            ->and(Lead::query()->count())->toBe(0);
     });
 });

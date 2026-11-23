@@ -33,3 +33,11 @@ it('rejects an empty or blank name', function (string $name): void {
 it('rejects a name longer than 150 characters', function (): void {
     new LeadData(str_repeat('ñ', 151));
 })->throws(InvalidArgumentException::class, 'name');
+
+it('rejects a name made only of Unicode separators', function (string $name): void {
+    new LeadData($name);
+})->with([
+    'no-break space' => ["\u{00A0}"],
+    'em space and ideographic space' => ["\u{2003}\u{3000}"],
+    'line separator' => ["\u{2028}"],
+])->throws(InvalidArgumentException::class, 'name');
