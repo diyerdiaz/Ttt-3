@@ -28,8 +28,6 @@ return new class extends Migration
                 CONSTRAINT leads_status_position_unique UNIQUE (status, position) DEFERRABLE INITIALLY DEFERRED
             )
             SQL);
-
-        DB::statement('CREATE INDEX leads_email_lower_index ON leads (lower(email))');
     }
 
     public function down(): void
