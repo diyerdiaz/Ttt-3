@@ -19,37 +19,30 @@ function archFixture(string $layer, string $class): string
     return ARCH_FIXTURES.'\\'.$layer.'\\'.$class;
 }
 
-function archDependency(string $dependency): string
-{
-    return in_array($dependency, ['Application', 'Http', 'Infrastructure'], true)
-        ? ARCH_FIXTURES.'\\'.$dependency
-        : $dependency;
-}
-
 dataset('forbidden uses', [
-    'domain -> application' => ['Domain', 'UsesApplication', 'Application'],
-    'domain -> http' => ['Domain', 'UsesHttp', 'Http'],
-    'domain -> infrastructure' => ['Domain', 'UsesInfrastructure', 'Infrastructure'],
-    'domain -> illuminate http' => ['Domain', 'UsesIlluminateHttp', 'Illuminate\Http'],
-    'domain -> livewire (last dependency)' => ['Domain', 'UsesLivewire', 'Livewire'],
-    'application -> http' => ['Application', 'UsesHttp', 'Http'],
-    'application -> infrastructure' => ['Application', 'UsesInfrastructure', 'Infrastructure'],
-    'application -> illuminate http' => ['Application', 'UsesIlluminateHttp', 'Illuminate\Http'],
-    'application -> livewire' => ['Application', 'UsesLivewire', 'Livewire'],
-    'application -> DB facade' => ['Application', 'UsesDbFacade', 'Illuminate\Support\Facades\DB'],
-    'http -> infrastructure' => ['Http', 'UsesInfrastructure', 'Infrastructure'],
-    'http -> DB facade' => ['Http', 'UsesDbFacade', 'Illuminate\Support\Facades\DB'],
-    'application -> DatabaseManager' => ['Application', 'UsesDatabaseManager', 'Illuminate\Database\DatabaseManager'],
-    'application -> ConnectionInterface' => ['Application', 'UsesConnectionInterface', 'Illuminate\Database\ConnectionInterface'],
-    'application -> Connection' => ['Application', 'UsesConnection', 'Illuminate\Database\Connection'],
-    'http -> DatabaseManager' => ['Http', 'UsesDatabaseManager', 'Illuminate\Database\DatabaseManager'],
-    'http -> ConnectionInterface' => ['Http', 'UsesConnectionInterface', 'Illuminate\Database\ConnectionInterface'],
-    'http -> Connection' => ['Http', 'UsesConnection', 'Illuminate\Database\Connection'],
+    'domain -> application' => ['Domain', 'UsesApplication'],
+    'domain -> http' => ['Domain', 'UsesHttp'],
+    'domain -> infrastructure' => ['Domain', 'UsesInfrastructure'],
+    'domain -> illuminate http' => ['Domain', 'UsesIlluminateHttp'],
+    'domain -> livewire (last dependency)' => ['Domain', 'UsesLivewire'],
+    'application -> http' => ['Application', 'UsesHttp'],
+    'application -> infrastructure' => ['Application', 'UsesInfrastructure'],
+    'application -> illuminate http' => ['Application', 'UsesIlluminateHttp'],
+    'application -> livewire' => ['Application', 'UsesLivewire'],
+    'application -> DB facade' => ['Application', 'UsesDbFacade'],
+    'http -> infrastructure' => ['Http', 'UsesInfrastructure'],
+    'http -> DB facade' => ['Http', 'UsesDbFacade'],
+    'application -> DatabaseManager' => ['Application', 'UsesDatabaseManager'],
+    'application -> ConnectionInterface' => ['Application', 'UsesConnectionInterface'],
+    'application -> Connection' => ['Application', 'UsesConnection'],
+    'http -> DatabaseManager' => ['Http', 'UsesDatabaseManager'],
+    'http -> ConnectionInterface' => ['Http', 'UsesConnectionInterface'],
+    'http -> Connection' => ['Http', 'UsesConnection'],
 ]);
 
-it('detects a forbidden dependency', function (string $layer, string $class, string $dependency): void {
+it('detects a forbidden dependency', function (string $layer, string $class): void {
     expect(fn () => ArchRules::assertNoForbiddenUses(ARCH_FIXTURES, $layer, archFixture($layer, $class)))
-        ->toThrow(AssertionFailedError::class, archDependency($dependency));
+        ->toThrow(AssertionFailedError::class);
 })->with('forbidden uses');
 
 it('accepts a class without forbidden dependencies', function (): void {

@@ -22,6 +22,14 @@ final class ArchRules
 
     public const ELOQUENT_FREE_LAYERS = ['Application', 'Http', 'Infrastructure'];
 
+    /** Entry points to the database that bypass the repositories. */
+    public const DATABASE_ACCESS = [
+        'Illuminate\Support\Facades\DB',
+        'Illuminate\Database\DatabaseManager',
+        'Illuminate\Database\ConnectionInterface',
+        'Illuminate\Database\Connection',
+    ];
+
     public const FINAL_LAYERS = ['Application', 'Infrastructure'];
 
     /**
@@ -42,11 +50,11 @@ final class ArchRules
                 $root.'\Infrastructure',
                 'Illuminate\Http',
                 'Livewire',
-                'Illuminate\Support\Facades\DB',
+                ...self::DATABASE_ACCESS,
             ],
             'Http' => [
                 $root.'\Infrastructure',
-                'Illuminate\Support\Facades\DB',
+                ...self::DATABASE_ACCESS,
             ],
         ];
     }
