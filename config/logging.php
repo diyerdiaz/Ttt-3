@@ -72,7 +72,7 @@ return [
             'driver' => 'daily',
             'path' => storage_path('logs/security.log'),
             'level' => 'info',
-            'days' => (int) env('SECURITY_LOG_DAYS', 90),
+            'days' => (int) (env('SECURITY_LOG_DAYS') ?: 90),
             'formatter' => JsonFormatter::class,
             'replace_placeholders' => true,
         ],

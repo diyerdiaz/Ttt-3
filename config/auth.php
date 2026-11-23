@@ -126,6 +126,6 @@ return [
     |
     */
 
-    'timebox_duration' => (int) env('AUTH_TIMEBOX_DURATION', 500000),
+    'timebox_duration' => (int) (env('AUTH_TIMEBOX_DURATION') ?: 500000),
 
 ];
