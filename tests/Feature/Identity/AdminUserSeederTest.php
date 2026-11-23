@@ -1,0 +1,53 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Domain\Identity\Models\User;
+use Database\Seeders\AdminUserSeeder;
+use Database\Seeders\DatabaseSeeder;
+use Illuminate\Support\Facades\Hash;
+
+it('seeds the admin from env and fails when env vars are missing', function (): void {
+    config(['crm.admin.email' => 'Boss@Example.com', 'crm.admin.password' => 'a-long-enough-secret']);
+
+    $this->seed(AdminUserSeeder::class);
+
+    $user = User::query()->where('email', 'boss@example.com')->firstOrFail();
+
+    expect($user->isAdmin())->toBeTrue()
+        ->and(Hash::check('a-long-enough-secret', $user->password))->toBeTrue();
+});
+
+it('fails instead of inventing credentials when the env vars are missing', function (?string $email, ?string $password): void {
+    config(['crm.admin.email' => $email, 'crm.admin.password' => $password]);
+
+    expect(fn () => $this->seed(AdminUserSeeder::class))->toThrow(RuntimeException::class, 'ADMIN_EMAIL');
+    expect(User::query()->count())->toBe(0);
+})->with([
+    'no email' => [null, 'a-long-enough-secret'],
+    'no password' => ['boss@example.com', null],
+    'empty values' => ['', ''],
+]);
+
+it('fails when the env password is weak', function (): void {
+    config(['crm.admin.email' => 'boss@example.com', 'crm.admin.password' => 'short']);
+
+    $this->seed(AdminUserSeeder::class);
+})->throws(RuntimeException::class);
+
+it('is idempotent when the admin already exists', function (): void {
+    config(['crm.admin.email' => 'boss@example.com', 'crm.admin.password' => 'a-long-enough-secret']);
+
+    $this->seed(AdminUserSeeder::class);
+    $this->seed(AdminUserSeeder::class);
+
+    expect(User::query()->count())->toBe(1);
+});
+
+it('seeds only the admin from the database seeder', function (): void {
+    config(['crm.admin.email' => 'boss@example.com', 'crm.admin.password' => 'a-long-enough-secret']);
+
+    $this->seed(DatabaseSeeder::class);
+
+    expect(User::query()->count())->toBe(1);
+});
