@@ -28,3 +28,16 @@ it('exposes the normalization used everywhere as a single source', function (): 
     expect(EmailAddress::normalize("  MiXed@Example.COM\t"))->toBe('mixed@example.com')
         ->and(EmailAddress::normalize(''))->toBe('');
 });
+
+it('accepts an otherwise valid email of 254 characters and rejects one of 255', function (): void {
+    $build = static fn (int $lastLabel): string => str_repeat('a', 64).'@'.str_repeat('b', 63).'.'.str_repeat('c', 63).'.'.str_repeat('d', $lastLabel);
+
+    $accepted = $build(61);
+    $rejected = $build(62);
+
+    expect(strlen($accepted))->toBe(254)
+        ->and(strlen($rejected))->toBe(255)
+        ->and(EmailAddress::fromString($accepted)->value())->toBe($accepted);
+
+    EmailAddress::fromString($rejected);
+})->throws(InvalidArgumentException::class);

@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Route;
 use Tests\Support\Accounts;
@@ -92,7 +94,6 @@ it('validates that email and password are present', function (array $payload, st
 })->with([
     'missing email' => [['password' => 'x'], 'email'],
     'missing password' => [['email' => 'ada@example.com'], 'password'],
-    'overlong email' => [['email' => str_repeat('a', 250).'@b.co', 'password' => 'x'], 'email'],
     'overlong password' => [['email' => 'ada@example.com', 'password' => str_repeat('p', 1025)], 'password'],
     'array email' => [['email' => ['a'], 'password' => 'x'], 'email'],
 ]);
@@ -127,4 +128,14 @@ it('authenticates a user stored with a mixed-case email', function (): void {
     $this->post('/login', ['email' => 'mixed@example.com', 'password' => Accounts::STRONG_PASSWORD])->assertRedirect('/');
 
     $this->assertAuthenticated();
+});
+
+it('rejects an overlong email at validation without attempting authentication', function (): void {
+    Event::fake([Failed::class]);
+
+    $this->post('/login', ['email' => str_repeat('a', 250).'@b.co', 'password' => Accounts::WRONG_PASSWORD])
+        ->assertSessionHasErrors('email');
+
+    expect(session('errors')->first('email'))->not->toBe(Accounts::GENERIC_ERROR);
+    Event::assertNotDispatched(Failed::class);
 });
