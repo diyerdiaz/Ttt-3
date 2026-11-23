@@ -25,6 +25,7 @@ describe('TestCase wiring', function (): void {
     it('aborts before any trait (migrations) runs when the app points to another database', function (): void {
         config()->set('database.connections.pgsql.database', 'crm');
         config()->set('database.default', 'pgsql');
+        $this->app['db']->purge();
 
         $setUpTraits = new ReflectionMethod($this, 'setUpTraits');
         $setUpTraits->invoke($this);
