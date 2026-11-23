@@ -1,6 +1,6 @@
 # Diseño del MVP CRM de leads
 
-Base: `chore/project-setup` (Laravel 13, PHP 8.5, Livewire 3, Pest 4, Larastan nivel 8). Hoy el `User` vive en `App\Models\User`; `feat/admin-auth` lo mueve a `App\Domain\Identity\Models\User` y actualiza `config/auth.php`.
+Base: `develop` tras `feat/project-setup` (Laravel 13, PHP 8.5, Livewire 4 solo componentes de clase en `App\Http\Livewire`, Pest 4, Larastan/PHPStan level max). `User` ya vive en `App\Domain\Identity\Models\User` (hecho en project-setup; admin-auth NO debe moverlo).
 Decisión transversal: los modelos Eloquent viven en `Domain/*/Models` (pragmatismo); las Actions solo dependen de **contratos**, y las queries viven en `Infrastructure/Persistence`.
 
 ## 1. Modelo de datos (PostgreSQL 18)
@@ -56,7 +56,7 @@ Escala: la reordenación es O(n) por columna, adecuada para cientos de leads. Si
 ### Leads
 - Models: `Lead` (casts `status => LeadStatus`; relación `activities()`).
 - Enums: `LeadStatus: string` con los casos `New, Contacted, Qualified, Proposal, Won, Lost` y los métodos `label(): string`, `isTerminal(): bool`, `canTransitionTo(self $to): bool`, `static boardOrder(): list<self>`.
-- Regla de transición del MVP: entre estados abiertos se puede mover libremente, en ambos sentidos, para corregir errores. Desde `Won`/`Lost` solo se puede reabrir a `Qualified`. Mover a la misma columna es un reorden y siempre es válido. Al estar la regla en un único método del enum, endurecerla es un cambio local.
+- Regla de transición del MVP: **libre entre cualquier par de estados** (incluidos `Won`/`Lost`, en ambos sentidos). `canTransitionTo` devuelve `true` para todo cambio de estado; mover dentro de la misma columna es reorden y siempre válido. Al estar la regla en un único método del enum, endurecerla es un cambio local.
 - VOs: `EmailAddress` (Shared); `PhoneNumber` (trim, solo `+ 0-9 espacio - ( )`, de 6 a 32 caracteres).
 - Contracts (segregados por ISP, lo que además evita conflictos de merge entre ramas paralelas):
   - `LeadRepository`: `find(int $id): ?Lead`; `findOrFail(int $id): Lead`; `create(LeadData $d, int $position): Lead`; `update(Lead $l, LeadData $d): Lead`; `nextPositionIn(LeadStatus $s): int`; `search(?string $term, int $perPage): LengthAwarePaginator`.
@@ -145,7 +145,7 @@ La validación en el borde se hace así: `LeadForm` usa un Livewire Form object 
 
 ## 6. Plan de ramas (todas desde `develop`, cada una en su worktree)
 ```
-chore/project-setup ──► feat/admin-auth ──► feat/lead-management ──┬─► feat/kanban-pipeline
+feat/project-setup ──► feat/admin-auth ──► feat/lead-management ──┬─► feat/kanban-pipeline
                                                                   ├─► feat/lead-activities   (en paralelo)
                                                                   └─► feat/csv-export
 ```
@@ -179,14 +179,13 @@ Implementa `laravel-specialist`; audita `security-scanner`.
 - Arch:
   - `arch('application and infrastructure classes are final')`
   - `arch('http layer does not use infrastructure')`
-  - `arch('user model lives in the identity domain')`
 
 ### feat/lead-management
 Primero `database-expert` (migraciones, CHECK, UNIQUE diferida, índices; primer commit) y después `laravel-specialist`, en secuencia y nunca a la vez. Audita `code-reviewer`.
 - Unit:
   - `it('exposes the board columns in business order')`
   - `it('allows free transitions between open statuses')`
-  - `it('only allows reopening a terminal status to qualified')`
+  - `it('allows moving between any two statuses')`
   - `it('treats a same-status move as a valid reorder')`
   - `it('validates and normalizes phone numbers')`
 - Integración (repositorio y PG):
@@ -259,3 +258,13 @@ Implementa `laravel-specialist`; audita `security-scanner` (inyección CSV).
 1. Listener de actividad automática al cambiar estado: NO en el MVP (YAGNI).
 2. Transiciones: libres entre cualquier par de estados (el usuario pidió cambiar estado arrastrando). `LeadStatus::canTransitionTo` se mantiene como único punto de extensión; hoy solo rechaza mover al mismo estado si no cambia el orden (no-op).
 3. Borrado de leads: fuera del MVP.
+
+## Rendimiento y caché del MVP (ver ~/.claude/CLAUDE.md §3.1)
+- **Kanban**: 1 consulta para todos los leads del tablero (`select` de columnas de tarjeta + `withCount('activities')` si se muestra), agrupado en PHP por `status`. Índice `(status, position)` ya cubre el orden. Test: `it('renders the board with a constant number of queries')` con 5 y con 200 leads → mismo número de queries.
+- **Listado de leads**: `paginate(25)` + índice en `lower(email)` y `created_at`; búsqueda por nombre/empresa con índice `pg_trgm` (GIN) solo si se añade búsqueda.
+- **Timeline de actividades**: índice `(lead_id, occurred_at DESC, id DESC)`; paginado/limitado a las N últimas.
+- **Export CSV**: `streamDownload` + `lazyById(500)` + `select` mínimo → memoria constante. Test: `it('exports 5000 leads without loading them all in memory')` (pico de memoria acotado).
+- **Caché**: el MVP NO cachea el tablero (un solo admin, datos que cambian en cada drag → invalidación constante, coste > beneficio). Se cachean solo los conteos por estado del tablero (`leads:board:counts:v1`, TTL 5 min) invalidados por el evento `LeadStatusChanged` y por alta de lead, con test de invalidación. Driver `database`.
+- **Livewire**: tablero con `#[Computed]` para columnas, `#[Locked]` en IDs, payload del drag solo IDs; formularios con `wire:model.blur`.
+- **Producción**: `php artisan optimize`, OPcache, autoload optimizado (README §Producción).
+- **Auditoría**: `performance-engineer` revisa `feat/kanban-pipeline` y `feat/csv-export` además de `code-reviewer`.
