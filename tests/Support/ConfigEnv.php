@@ -18,19 +18,22 @@ final class ConfigEnv
         $previous = [];
 
         foreach ($env as $name => $value) {
-            $previous[$name] = [$_ENV[$name] ?? null, $_SERVER[$name] ?? null];
+            $previous[$name] = [$_ENV[$name] ?? null, $_SERVER[$name] ?? null, getenv($name)];
             unset($_ENV[$name], $_SERVER[$name]);
+            putenv($name);
 
             if ($value !== null) {
                 $_ENV[$name] = $_SERVER[$name] = $value;
+                putenv($name.'='.$value);
             }
         }
 
         try {
             return require config_path($file.'.php');
         } finally {
-            foreach ($previous as $name => [$envValue, $serverValue]) {
+            foreach ($previous as $name => [$envValue, $serverValue, $processValue]) {
                 unset($_ENV[$name], $_SERVER[$name]);
+                putenv($processValue === false ? $name : $name.'='.$processValue);
 
                 if ($envValue !== null) {
                     $_ENV[$name] = $envValue;
