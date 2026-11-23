@@ -13,34 +13,13 @@ use App\Domain\Shared\Contracts\TransactionManager;
 use App\Infrastructure\Persistence\EloquentLeadRepository;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Tests\Support\Board;
 use Tests\Support\FailsAfterCallbackTransactionManager;
 use Tests\Support\LeadRows;
 use Tests\Support\QueryCounter;
 
-/**
- * @return array<int, Lead> leads keyed by their 1-based creation order
- */
-function seedBoard(): array
-{
-    $leads = [];
-    foreach ([[LeadStatus::New, 0], [LeadStatus::New, 1], [LeadStatus::New, 2], [LeadStatus::Qualified, 0], [LeadStatus::Qualified, 1]] as $i => [$status, $position]) {
-        $leads[$i + 1] = Lead::factory()->status($status)->create(['position' => $position]);
-    }
-
-    return $leads;
-}
-
-/**
- * @param  list<Lead>  $leads
- * @return list<int>
- */
-function ids(array $leads): array
-{
-    return array_map(static fn (Lead $lead): int => (int) $lead->id, $leads);
-}
-
 it('persists a reorder within a column with dense positions', function (): void {
-    $leads = seedBoard();
+    $leads = Board::persisted();
 
     app(MoveLead::class)(new MoveLeadData($leads[3]->id, LeadStatus::New, [$leads[3]->id, $leads[1]->id, $leads[2]->id]));
 
@@ -50,7 +29,7 @@ it('persists a reorder within a column with dense positions', function (): void 
 });
 
 it('moves a lead to another column at the dropped index and leaves a gap but no collision behind', function (): void {
-    $leads = seedBoard();
+    $leads = Board::persisted();
 
     app(MoveLead::class)(new MoveLeadData($leads[1]->id, LeadStatus::Qualified, [$leads[4]->id, $leads[1]->id, $leads[5]->id]));
 
@@ -61,7 +40,7 @@ it('moves a lead to another column at the dropped index and leaves a gap but no 
 });
 
 it('moves a lead into an empty column', function (): void {
-    $leads = seedBoard();
+    $leads = Board::persisted();
 
     app(MoveLead::class)(new MoveLeadData($leads[2]->id, LeadStatus::Won, [$leads[2]->id]));
 
@@ -69,7 +48,7 @@ it('moves a lead into an empty column', function (): void {
 });
 
 it('only rewrites the rows whose status or position changed', function (): void {
-    $leads = seedBoard();
+    $leads = Board::persisted();
     Lead::query()->update(['updated_at' => '2020-01-01 00:00:00+00']);
 
     app(MoveLead::class)(new MoveLeadData($leads[3]->id, LeadStatus::New, [$leads[1]->id, $leads[2]->id, $leads[3]->id]));
@@ -80,7 +59,7 @@ it('only rewrites the rows whose status or position changed', function (): void 
 });
 
 it('rewrites the destination column with a single UPDATE statement', function (): void {
-    $leads = seedBoard();
+    $leads = Board::persisted();
     $ids = [$leads[4]->id, $leads[1]->id, $leads[5]->id];
 
     DB::enableQueryLog();
@@ -93,7 +72,7 @@ it('rewrites the destination column with a single UPDATE statement', function ()
 });
 
 it('rejects a stale ordering and leaves the board untouched', function (): void {
-    $leads = seedBoard();
+    $leads = Board::persisted();
     $before = Lead::query()->orderBy('id')->get(['id', 'status', 'position'])->toArray();
 
     expect(fn () => app(MoveLead::class)(new MoveLeadData($leads[1]->id, LeadStatus::Qualified, [$leads[1]->id, $leads[4]->id])))
@@ -103,7 +82,7 @@ it('rejects a stale ordering and leaves the board untouched', function (): void 
 });
 
 it('rolls back all position changes when the move fails', function (): void {
-    $leads = seedBoard();
+    $leads = Board::persisted();
     $before = Lead::query()->orderBy('id')->get(['id', 'status', 'position'])->toArray();
     $repository = app(EloquentLeadRepository::class);
     $move = new MoveLead($repository, new FailsAfterCallbackTransactionManager(app(TransactionManager::class)), app('events'));
@@ -115,7 +94,7 @@ it('rolls back all position changes when the move fails', function (): void {
 });
 
 it('dispatches LeadStatusChanged after commit only on status change', function (): void {
-    $leads = seedBoard();
+    $leads = Board::persisted();
     $received = [];
     Event::listen(LeadStatusChanged::class, static function (LeadStatusChanged $event) use (&$received): void {
         $received[] = $event;
@@ -136,7 +115,7 @@ it('dispatches LeadStatusChanged after commit only on status change', function (
 });
 
 it('drops the event when the move rolls back', function (): void {
-    $leads = seedBoard();
+    $leads = Board::persisted();
     $received = [];
     Event::listen(LeadStatusChanged::class, static function (LeadStatusChanged $event) use (&$received): void {
         $received[] = $event;
@@ -157,8 +136,8 @@ describe('board repository', function (): void {
         $columns = app(LeadBoardRepository::class)->columns();
 
         expect(array_keys($columns))->toBe(array_map(static fn (LeadStatus $s): string => $s->value, LeadStatus::boardOrder()))
-            ->and(ids($columns['won']))->toBe([$b->id, $a->id])
-            ->and(ids($columns['new']))->toBe([$c->id])
+            ->and(Board::ids($columns['won']))->toBe([$b->id, $a->id])
+            ->and(Board::ids($columns['new']))->toBe([$c->id])
             ->and($columns['lost'])->toBe([]);
     });
 

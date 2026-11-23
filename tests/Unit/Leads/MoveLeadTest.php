@@ -7,24 +7,11 @@ use App\Domain\Leads\Enums\LeadStatus;
 use App\Domain\Leads\Events\LeadStatusChanged;
 use App\Domain\Leads\Exceptions\StaleBoardState;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Tests\Support\InMemoryLeadStore;
+use Tests\Support\Board;
 use Tests\Support\LeadActions;
 
-function boardWithTwoColumns(): InMemoryLeadStore
-{
-    $store = new InMemoryLeadStore;
-    $store->seed(LeadStatus::New, 0);       // 1
-    $store->seed(LeadStatus::New, 1);       // 2
-    $store->seed(LeadStatus::New, 2);       // 3
-    $store->seed(LeadStatus::Qualified, 0); // 4
-    $store->seed(LeadStatus::Qualified, 1); // 5
-    $store->calls = [];
-
-    return $store;
-}
-
 it('reorders leads within the same column', function (): void {
-    $store = boardWithTwoColumns();
+    $store = Board::inMemory();
 
     LeadActions::move($store)(new MoveLeadData(3, LeadStatus::New, [3, 1, 2]));
 
@@ -33,7 +20,7 @@ it('reorders leads within the same column', function (): void {
 });
 
 it('moves a lead to another column at the dropped index and updates its status', function (): void {
-    $store = boardWithTwoColumns();
+    $store = Board::inMemory();
 
     LeadActions::move($store)(new MoveLeadData(2, LeadStatus::Qualified, [4, 2, 5]));
 
@@ -43,7 +30,7 @@ it('moves a lead to another column at the dropped index and updates its status',
 });
 
 it('leaves a gap but no collision in the source column', function (): void {
-    $store = boardWithTwoColumns();
+    $store = Board::inMemory();
 
     LeadActions::move($store)(new MoveLeadData(2, LeadStatus::Qualified, [2, 4, 5]));
 
@@ -53,7 +40,7 @@ it('leaves a gap but no collision in the source column', function (): void {
 });
 
 it('takes the lock, then the row, then writes the column, all inside the transaction', function (): void {
-    $store = boardWithTwoColumns();
+    $store = Board::inMemory();
 
     LeadActions::move($store)(new MoveLeadData(2, LeadStatus::Qualified, [4, 2, 5]));
 
@@ -61,7 +48,7 @@ it('takes the lock, then the row, then writes the column, all inside the transac
 });
 
 it('rejects a stale ordering that does not match the column contents', function (array $ordered): void {
-    $store = boardWithTwoColumns();
+    $store = Board::inMemory();
 
     expect(fn () => LeadActions::move($store)(new MoveLeadData(2, LeadStatus::Qualified, $ordered)))
         ->toThrow(StaleBoardState::class)
@@ -76,7 +63,7 @@ it('rejects a stale ordering that does not match the column contents', function 
 ]);
 
 it('does not write anything when the ordering is stale', function (): void {
-    $store = boardWithTwoColumns();
+    $store = Board::inMemory();
 
     try {
         LeadActions::move($store)(new MoveLeadData(2, LeadStatus::Qualified, [4, 5]));
@@ -87,11 +74,11 @@ it('does not write anything when the ordering is stale', function (): void {
 });
 
 it('fails when the lead does not exist', function (): void {
-    LeadActions::move(boardWithTwoColumns())(new MoveLeadData(99, LeadStatus::New, [99]));
+    LeadActions::move(Board::inMemory())(new MoveLeadData(99, LeadStatus::New, [99]));
 })->throws(ModelNotFoundException::class);
 
 it('dispatches LeadStatusChanged only on status change', function (): void {
-    $store = boardWithTwoColumns();
+    $store = Board::inMemory();
     $log = [];
     $action = LeadActions::move($store, LeadActions::recordingDispatcher([LeadStatusChanged::class], $log));
 
