@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ $title ?? $__env->yieldContent('title', config('app.name')) }}</title>
+    <title>@hasSection('title')@yield('title')@else{{ $title ?? config('app.name') }}@endif</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-gray-50 font-sans text-gray-900 antialiased">
