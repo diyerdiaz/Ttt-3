@@ -16,25 +16,26 @@ it('is registered as the policy of the Lead model', function (): void {
 });
 
 it('lets admins do everything with leads', function (string $ability): void {
-    $subject = in_array($ability, ['viewAny', 'create'], true) ? Lead::class : Lead::factory()->make();
+    $subject = in_array($ability, ['viewAny', 'create', 'export'], true) ? Lead::class : Lead::factory()->make();
 
     expect(Gate::forUser(Accounts::admin())->allows($ability, $subject))->toBeTrue();
-})->with(['viewAny', 'create', 'view', 'update']);
+})->with(['viewAny', 'create', 'view', 'update', 'export']);
 
 it('denies every ability to non-admins and guests', function (string $ability): void {
     $lead = Lead::factory()->make();
-    $subject = in_array($ability, ['viewAny', 'create'], true) ? Lead::class : $lead;
+    $subject = in_array($ability, ['viewAny', 'create', 'export'], true) ? Lead::class : $lead;
 
     expect(Gate::forUser(Accounts::user())->allows($ability, $subject))->toBeFalse()
         ->and(Gate::forUser(null)->allows($ability, $subject))->toBeFalse();
-})->with(['viewAny', 'create', 'view', 'update']);
+})->with(['viewAny', 'create', 'view', 'update', 'export']);
 
 it('delegates to the access-admin ability instead of duplicating the rule', function (): void {
     $admin = Accounts::admin();
     Gate::define(Abilities::ACCESS_ADMIN, static fn (): bool => false);
 
     expect(Gate::forUser($admin)->allows('viewAny', Lead::class))->toBeFalse()
-        ->and(Gate::forUser($admin)->allows('update', Lead::factory()->make()))->toBeFalse();
+        ->and(Gate::forUser($admin)->allows('update', Lead::factory()->make()))->toBeFalse()
+        ->and(Gate::forUser($admin)->allows('export', Lead::class))->toBeFalse();
 });
 
 it('is consulted by the lead components', function (): void {

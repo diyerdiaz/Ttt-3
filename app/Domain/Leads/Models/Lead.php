@@ -6,6 +6,7 @@ namespace App\Domain\Leads\Models;
 
 use App\Domain\Activities\Models\Activity;
 use App\Domain\Leads\Enums\LeadStatus;
+use Carbon\CarbonImmutable;
 use Database\Factories\LeadFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
@@ -22,6 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string|null $notes
  * @property LeadStatus $status
  * @property int $position
+ * @property CarbonImmutable|null $created_at
  */
 #[Fillable(['name', 'email', 'phone', 'company', 'notes'])]
 #[UseFactory(LeadFactory::class)]

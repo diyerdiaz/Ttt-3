@@ -72,7 +72,8 @@ Escala: la reordenación es O(n) por columna, adecuada para cientos de leads. Si
   - `UpdateLead(int $id, LeadData): Lead`: si cambia el estado, valida la transición y añade el lead al final de la nueva columna bajo el lock. Emite `LeadUpdated` y, si cambió el estado, `LeadStatusChanged`.
   - `MoveLead(MoveLeadData): void`: ver el flujo en la sección 4.
   - `ExportLeads(LeadExportFilter, LeadExporter, resource $out): void`.
-- DTOs: `LeadData(string $name, ?EmailAddress $email, ?PhoneNumber $phone, ?string $company, ?string $notes, ?LeadStatus $status)` (invariantes: nombre no vacío y de hasta 150 caracteres; `status` nulo significa "no especificado": un lead nuevo empieza en `New` y uno existente conserva el que tiene, de modo que un formulario abierto hace rato no revierte un cambio de estado posterior); `MoveLeadData(int $leadId, LeadStatus $to, list<int> $orderedIds)`; `LeadExportFilter(list<LeadStatus> $statuses)`, donde una lista vacía significa todos.
+  - `LeadExporterFactory` (interfaz en `Domain/Leads/Contracts`, para que `Http` no dependa de `Infrastructure`): `for(string $format): LeadExporter`, lanza `Domain\Leads\Exceptions\UnsupportedExportFormat` si el formato no existe (se compara exacto, sin normalizar). Implementación: `Infrastructure\Export\ConfiguredLeadExporterFactory`. `LeadExportSource` se implementa en `Infrastructure\Persistence\EloquentLeadExportSource` (`select` de 8 columnas, `lazyById(500)`, `whereIn` por estados).
+- DTOs: `LeadData(string $name, ?EmailAddress $email, ?PhoneNumber $phone, ?string $company, ?string $notes, ?LeadStatus $status)` (invariantes: nombre no vacío y de hasta 150 caracteres; `status` nulo significa "no especificado": un lead nuevo empieza en `New` y uno existente conserva el que tiene, de modo que un formulario abierto hace rato no revierte un cambio de estado posterior); `MoveLeadData(int $leadId, LeadStatus $to, list<int> $orderedIds)`; `LeadExportFilter(list<LeadStatus> $statuses)`, donde una lista vacía significa todos (`isUnfiltered()`); vive en `Domain/Leads/ValueObjects`, como `LeadData`.
 - Excepciones de dominio: `InvalidStatusTransition`, `StaleBoardState`.
 - Events: `LeadCreated(int $leadId)`, `LeadUpdated(int $leadId)` y `LeadStatusChanged(int $leadId, LeadStatus $from, LeadStatus $to)`. Todos implementan `ShouldDispatchAfterCommit`.
 
@@ -146,6 +147,9 @@ La validación en el borde se hace así: `LeadForm` usa un Livewire Form object 
 - **Inyección de fórmulas en CSV (OWASP)**: `Infrastructure/Export/CsvCellSanitizer::sanitize(?string): string`.
   - Si la celda empieza por `= + - @ \t \r` (o por `\n`, `\0`), se le antepone `'`. Se aplica a todas las celdas de texto, también a las que llevan espacios en blanco delante.
   - Las celdas se escriben con `fputcsv` (comillas y escape correctos), con BOM UTF-8 para Excel y con `Content-Disposition: attachment; filename="leads-YYYYmmdd-His.csv"` y `X-Content-Type-Options: nosniff`.
+  - Teléfonos: un número como `+34 600 123 456` empieza por `+`, así que se neutraliza como cualquier otra celda (`'+34 600 123 456`). Distinguir un teléfono de `+cmd|...` sería una heurística frágil; se prefiere una regla uniforme y se acepta el apóstrofo visible en la hoja de cálculo.
+  - Cabecera en español (`ID, Nombre, Correo, Teléfono, Empresa, Estado, Notas, Creado`), fin de línea CRLF y `escape: ''` en `fputcsv` (RFC 4180; el escape por defecto está obsoleto en PHP 8.4).
+  - `ExportLeadsRequest` autoriza con `LeadPolicy::export` (así el controller no toca modelos de Domain) y responde 422 (no redirección) ante un `status` inválido. La ruta vive en `routes/web/export.php`, que el glob carga antes que `leads.php`, de modo que `/leads/export` gana a cualquier futura `/leads/{lead}`; hay un test que lo fija.
   - Streaming con `response()->streamDownload` sobre `php://output` y `lazyById`, con memoria constante.
 - **XSS**: Blade escapa la salida con `{{ }}` y nunca se usa `{!! !!}` con datos de lead. Las notas se muestran con `whitespace-pre-line`, no como HTML.
 - **Mass assignment**: no se usa `$fillable` con datos del request; los repositorios mapean desde los DTOs. `Model::shouldBeStrict()` está activo fuera de producción.
@@ -249,7 +253,7 @@ Implementa `laravel-specialist`; audita `security-scanner` (inyección CSV).
 - Unit:
   - `it('prefixes cells starting with = + - @ tab or carriage return with a quote')`
   - `it('leaves safe cells untouched')`
-  - `it('writes a header row and one row per lead with fputcsv quoting')`
+  - `it('writes a header row and one row per lead with fputcsv quoting')` (vive en `tests/Feature/Export` porque hidratar `Lead` necesita la aplicación arrancada)
   - `it('resolves the csv exporter strategy by format and fails on unknown format')`
 - Integración:
   - `it('streams leads in id order using lazy chunks')`
@@ -272,7 +276,7 @@ Implementa `laravel-specialist`; audita `security-scanner` (inyección CSV).
 - **Listado de leads**: `paginate(25)` ordenado por `id DESC` (la PK ya cubre el orden; no hay índice en `created_at`) y solo las columnas que pinta la vista (`id, name, email, phone, company, status`). La tabla solo lleva la PK y el UNIQUE `(status, position)`: no hay índice en `lower(email)`, porque la búsqueda es por subcadena (`ILIKE '%término%'`) y un índice B-tree no la sirve.
 - **Búsqueda: índice trigram aplazado (YAGNI)**: medido 4 ms con 1000 leads (escaneo secuencial). `pg_trgm` + índice GIN no hace falta hasta superar unos 50 000 leads; entonces se añade en una migración nueva, con `EXPLAIN ANALYZE` antes y después.
 - **Timeline de actividades**: índice `(lead_id, occurred_at DESC, id DESC)`; paginado/limitado a las N últimas.
-- **Export CSV**: `streamDownload` + `lazyById(500)` + `select` mínimo → memoria constante. Test: `it('exports 5000 leads without loading them all in memory')` (pico de memoria acotado).
+- **Export CSV**: `streamDownload` + `lazyById(500)` + `select` mínimo → memoria constante. Test: `it('exports 5000 leads without loading them all in memory')`. Se mide con `memory_get_usage()` muestreado en cada lead mediante un decorador de la fuente (`tests/Support/ExportProbe`), no con `memory_get_peak_usage()`, que solo se actualiza al pedir páginas nuevas al asignador y a menudo no muestra crecimiento. Medido: 3,2 MB con `lazyById` frente a 20,7 MB con `->get()` para 5000 leads con notas de 2 KB; el límite del test es 6 MB. El export hace 1 consulta por trozo de 500 (no depende del número de leads por lead, sin N+1).
 - **Caché**: el MVP NO cachea el tablero (un solo admin, datos que cambian en cada drag → invalidación constante, coste > beneficio). Se cachean solo los conteos por estado del tablero (`leads:board:counts:v1`, TTL 5 min) invalidados por el evento `LeadStatusChanged` y por alta de lead, con test de invalidación. Driver `database`.
 - **Livewire**: tablero con `#[Computed]` para columnas, `#[Locked]` en IDs, payload del drag solo IDs; formularios con `wire:model.blur`.
 - **Producción**: `php artisan optimize`, OPcache, autoload optimizado (README §Producción).

@@ -37,6 +37,11 @@ final readonly class LeadPolicy
         return $this->isAdmin($user);
     }
 
+    public function export(User $user): bool
+    {
+        return $this->isAdmin($user);
+    }
+
     private function isAdmin(User $user): bool
     {
         return $this->gate->forUser($user)->allows(Abilities::ACCESS_ADMIN);
