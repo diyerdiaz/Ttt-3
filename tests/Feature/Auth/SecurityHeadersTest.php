@@ -26,7 +26,7 @@ it('sends hardening headers on protected pages and redirects', function (): void
 it('sends HSTS only in production over https', function (): void {
     $this->get('https://localhost/login')->assertHeaderMissing('Strict-Transport-Security');
 
-    $this->app->detectEnvironment(static fn (): string => 'production');
+    $this->inEnvironment('production');
 
     $this->get('http://localhost/login')->assertHeaderMissing('Strict-Transport-Security');
     $this->get('https://localhost/login')->assertHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');

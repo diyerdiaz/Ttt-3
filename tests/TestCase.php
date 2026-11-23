@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Support\Facades\Http;
 use Tests\Support\TestDatabaseGuard;
 
 abstract class TestCase extends BaseTestCase
@@ -31,6 +32,16 @@ abstract class TestCase extends BaseTestCase
         parent::setUp();
 
         $this->withoutVite();
+        Http::preventStrayRequests();
+    }
+
+    protected function inEnvironment(string $environment): static
+    {
+        $this->app->detectEnvironment(static fn (): string => $environment);
+
+        expect($this->app->environment())->toBe($environment);
+
+        return $this;
     }
 
     /**
@@ -38,7 +49,7 @@ abstract class TestCase extends BaseTestCase
      */
     protected function withCsrfEnforced(): static
     {
-        $this->app->detectEnvironment(static fn (): string => 'local');
+        $this->inEnvironment('local');
 
         expect($this->app->runningUnitTests())->toBeFalse();
 

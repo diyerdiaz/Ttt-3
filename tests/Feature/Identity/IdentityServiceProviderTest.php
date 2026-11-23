@@ -17,7 +17,7 @@ it('does not call the pwned passwords API outside production', function (): void
 
 it('rejects compromised passwords in production', function (): void {
     $passwordFails = static fn (string $password): bool => validator(['p' => $password], ['p' => Password::default()])->fails();
-    $this->app->detectEnvironment(static fn (): string => 'production');
+    $this->inEnvironment('production');
     (new IdentityServiceProvider($this->app))->boot();
     Http::fake(['api.pwnedpasswords.com/*' => Http::response(substr(strtoupper(sha1('password1234')), 5).':9999')]);
 
