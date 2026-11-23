@@ -6,29 +6,16 @@ use App\Domain\Leads\Contracts\LeadExportSource;
 use App\Domain\Leads\Enums\LeadStatus;
 use App\Domain\Leads\Models\Lead;
 use App\Domain\Leads\ValueObjects\LeadExportFilter;
+use Tests\Support\ExportProbe;
 use Tests\Support\LeadRows;
 use Tests\Support\QueryCounter;
-
-/**
- * @return list<int>
- */
-function exportedIds(LeadExportFilter $filter): array
-{
-    $ids = [];
-
-    foreach (app(LeadExportSource::class)->stream($filter) as $lead) {
-        $ids[] = $lead->id;
-    }
-
-    return $ids;
-}
 
 it('streams leads in id order using lazy chunks', function (): void {
     LeadRows::insertMany(1001);
 
     $ids = [];
     $queries = QueryCounter::during(function () use (&$ids): void {
-        $ids = exportedIds(new LeadExportFilter([]));
+        $ids = ExportProbe::ids(new LeadExportFilter([]));
     });
     $sorted = $ids;
     sort($sorted);
@@ -43,7 +30,7 @@ it('reads each chunk with a keyset condition on the primary key', function (): v
     DB::listen(static function ($query) use (&$sql): void {
         $sql[] = $query->sql;
     });
-    exportedIds(new LeadExportFilter([]));
+    ExportProbe::ids(new LeadExportFilter([]));
 
     expect($sql)->toHaveCount(2)
         ->and($sql[0])->toContain('order by "id" asc')->toContain('limit 500')
@@ -55,9 +42,9 @@ it('filters exported leads by one or several statuses', function (): void {
     $won = Lead::factory()->status(LeadStatus::Won)->create();
     $lost = Lead::factory()->status(LeadStatus::Lost)->create();
 
-    expect(exportedIds(new LeadExportFilter([LeadStatus::Won])))->toBe([$won->id])
-        ->and(exportedIds(new LeadExportFilter([LeadStatus::Won, LeadStatus::New])))->toBe([$new->id, $won->id])
-        ->and(exportedIds(new LeadExportFilter([])))->toBe([$new->id, $won->id, $lost->id]);
+    expect(ExportProbe::ids(new LeadExportFilter([LeadStatus::Won])))->toBe([$won->id])
+        ->and(ExportProbe::ids(new LeadExportFilter([LeadStatus::Won, LeadStatus::New])))->toBe([$new->id, $won->id])
+        ->and(ExportProbe::ids(new LeadExportFilter([])))->toBe([$new->id, $won->id, $lost->id]);
 });
 
 it('selects only the exported columns', function (): void {
@@ -70,9 +57,9 @@ it('selects only the exported columns', function (): void {
 
 it('runs a constant number of queries per chunk and no per-lead queries', function (): void {
     LeadRows::insertMany(5);
-    $few = QueryCounter::during(fn () => exportedIds(new LeadExportFilter([])));
+    $few = QueryCounter::during(fn () => ExportProbe::ids(new LeadExportFilter([])));
     LeadRows::insertMany(45, firstPosition: 100);
-    $many = QueryCounter::during(fn () => exportedIds(new LeadExportFilter([])));
+    $many = QueryCounter::during(fn () => ExportProbe::ids(new LeadExportFilter([])));
 
     expect($few)->toBe(1)->and($many)->toBe(1);
 });

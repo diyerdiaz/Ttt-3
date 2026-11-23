@@ -6,11 +6,15 @@ namespace App\Providers;
 
 use App\Domain\Identity\Contracts\UserRepository;
 use App\Domain\Leads\Contracts\LeadBoardRepository;
+use App\Domain\Leads\Contracts\LeadExporterFactory;
+use App\Domain\Leads\Contracts\LeadExportSource;
 use App\Domain\Leads\Contracts\LeadRepository;
 use App\Domain\Leads\Models\Lead;
 use App\Domain\Leads\Policies\LeadPolicy;
 use App\Domain\Shared\Contracts\TransactionManager;
+use App\Infrastructure\Export\ConfiguredLeadExporterFactory;
 use App\Infrastructure\Persistence\DatabaseTransactionManager;
+use App\Infrastructure\Persistence\EloquentLeadExportSource;
 use App\Infrastructure\Persistence\EloquentLeadRepository;
 use App\Infrastructure\Persistence\EloquentUserRepository;
 use Illuminate\Support\Facades\Gate;
@@ -25,6 +29,8 @@ final class DomainServiceProvider extends ServiceProvider
         UserRepository::class => EloquentUserRepository::class,
         LeadRepository::class => EloquentLeadRepository::class,
         LeadBoardRepository::class => EloquentLeadRepository::class,
+        LeadExportSource::class => EloquentLeadExportSource::class,
+        LeadExporterFactory::class => ConfiguredLeadExporterFactory::class,
         TransactionManager::class => DatabaseTransactionManager::class,
     ];
 

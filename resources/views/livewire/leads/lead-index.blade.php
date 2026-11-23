@@ -4,6 +4,24 @@
         <a href="{{ route('leads.create') }}" wire:navigate class="rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700">Nuevo lead</a>
     </div>
 
+    <details class="rounded border border-gray-200 bg-white px-3 py-2 text-sm">
+        <summary class="cursor-pointer font-medium">Exportar CSV</summary>
+        <form method="GET" action="{{ route('leads.export') }}" class="mt-3 space-y-3">
+            <fieldset>
+                <legend class="text-gray-600">Estados a exportar (sin marcar ninguno se exportan todos)</legend>
+                <div class="mt-2 flex flex-wrap gap-x-4 gap-y-2">
+                    @foreach (\App\Domain\Leads\Enums\LeadStatus::boardOrder() as $status)
+                        <label class="inline-flex items-center gap-2">
+                            <input type="checkbox" name="status[]" value="{{ $status->value }}">
+                            {{ $status->label() }}
+                        </label>
+                    @endforeach
+                </div>
+            </fieldset>
+            <button type="submit" class="rounded bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700">Descargar CSV</button>
+        </form>
+    </details>
+
     @if (session('status'))
         <p role="status" class="rounded bg-green-50 px-3 py-2 text-sm text-green-800">{{ session('status') }}</p>
     @endif

@@ -6,34 +6,17 @@ use App\Domain\Leads\Enums\LeadStatus;
 use App\Domain\Leads\Models\Lead;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Tests\Support\Accounts;
 use Tests\Support\CsvDownload;
-use Tests\TestCase;
-
-/**
- * @param  array<string, mixed>  $query
- */
-function exportCsv(TestCase $test, array $query = []): TestResponse
-{
-    return $test->get('/leads/export'.($query === [] ? '' : '?'.http_build_query($query)));
-}
-
-/**
- * @return list<string> names in the data rows of a downloaded csv
- */
-function exportedNames(TestResponse $response): array
-{
-    return array_column(array_slice(CsvDownload::rows($response->streamedContent()), 1), 1);
-}
+use Tests\Support\ExportProbe;
 
 it('downloads a streamed csv with attachment headers', function (): void {
     $this->actingAs(Accounts::admin());
     Lead::factory()->create(['name' => 'Ada Lovelace']);
     $this->travelTo(now()->setDate(2026, 11, 23)->setTime(14, 5, 9));
 
-    $response = exportCsv($this);
+    $response = ExportProbe::download($this);
 
     $response->assertOk()
         ->assertHeader('Content-Type', 'text/csv; charset=utf-8')
@@ -50,7 +33,7 @@ it('exports all leads when no status filter is given', function (): void {
     Lead::factory()->status(LeadStatus::Won)->create(['name' => 'Second']);
     Lead::factory()->status(LeadStatus::Lost)->create(['name' => 'Third']);
 
-    $rows = CsvDownload::rows(exportCsv($this)->streamedContent());
+    $rows = CsvDownload::rows(ExportProbe::download($this)->streamedContent());
 
     expect($rows[0])->toBe(['ID', 'Nombre', 'Correo', 'Teléfono', 'Empresa', 'Estado', 'Notas', 'Creado'])
         ->and(array_column(array_slice($rows, 1), 1))->toBe(['First', 'Second', 'Third']);
@@ -62,9 +45,9 @@ it('exports only the requested statuses', function (): void {
     Lead::factory()->status(LeadStatus::Won)->create(['name' => 'Second']);
     Lead::factory()->status(LeadStatus::Lost)->create(['name' => 'Third']);
 
-    expect(exportedNames(exportCsv($this, ['status' => ['won']])))->toBe(['Second'])
-        ->and(exportedNames(exportCsv($this, ['status' => ['won', 'new']])))->toBe(['First', 'Second'])
-        ->and(exportedNames(exportCsv($this, ['status' => []])))->toBe(['First', 'Second', 'Third']);
+    expect(ExportProbe::names(ExportProbe::download($this, ['status' => ['won']])))->toBe(['Second'])
+        ->and(ExportProbe::names(ExportProbe::download($this, ['status' => ['won', 'new']])))->toBe(['First', 'Second'])
+        ->and(ExportProbe::names(ExportProbe::download($this, ['status' => []])))->toBe(['First', 'Second', 'Third']);
 });
 
 it('rejects an invalid status filter with 422', function (string $queryString): void {
@@ -92,7 +75,7 @@ it('neutralizes formula payloads in exported names and notes', function (): void
     $this->actingAs(Accounts::admin());
     Lead::factory()->create(['name' => '=1+1', 'notes' => '@SUM(A1)', 'company' => '  -2', 'phone' => '+34 600 123 456']);
 
-    $rows = CsvDownload::rows(exportCsv($this)->streamedContent());
+    $rows = CsvDownload::rows(ExportProbe::download($this)->streamedContent());
 
     expect($rows[1][1])->toBe("'=1+1")
         ->and($rows[1][3])->toBe("'+34 600 123 456")
@@ -113,10 +96,10 @@ it('throttles repeated exports', function (): void {
     $this->actingAs(Accounts::admin());
 
     foreach (range(1, 10) as $attempt) {
-        exportCsv($this)->assertOk();
+        ExportProbe::download($this)->assertOk();
     }
 
-    exportCsv($this)->assertStatus(429);
+    ExportProbe::download($this)->assertStatus(429);
 });
 
 it('resolves /leads/export to the export even if a /leads/{lead} route exists', function (): void {
