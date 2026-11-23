@@ -2,10 +2,9 @@
 
 declare(strict_types=1);
 
-use [classwithnamespace];
 use Livewire\Livewire;
 
 it('renders successfully', function () {
-    Livewire::test([class]::class)
+    Livewire::test('[component-name]')
         ->assertStatus(200);
 });
