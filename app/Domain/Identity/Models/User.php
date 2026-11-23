@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Identity\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Domain\Shared\ValueObjects\EmailAddress;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -42,7 +43,7 @@ class User extends Authenticatable
     protected function email(): Attribute
     {
         return Attribute::make(
-            set: static fn (string $value): string => mb_strtolower(trim($value)),
+            set: static fn (string $value): string => EmailAddress::normalize($value),
         );
     }
 

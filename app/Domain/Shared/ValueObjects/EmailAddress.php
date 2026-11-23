@@ -15,13 +15,18 @@ final readonly class EmailAddress implements Stringable
 
     public static function fromString(string $value): self
     {
-        $normalized = mb_strtolower(trim($value));
+        $normalized = self::normalize($value);
 
         if (strlen($normalized) > self::MAX_LENGTH || filter_var($normalized, FILTER_VALIDATE_EMAIL) === false) {
             throw new InvalidArgumentException('Invalid email address.');
         }
 
         return new self($normalized);
+    }
+
+    public static function normalize(string $value): string
+    {
+        return mb_strtolower(trim($value));
     }
 
     public function value(): string
