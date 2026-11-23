@@ -67,3 +67,11 @@ it('rejects an invalid ADMIN_EMAIL', function (): void {
 
     expect(fn () => $this->seed(AdminUserSeeder::class))->toThrow(RuntimeException::class, 'ADMIN_EMAIL');
 });
+
+it('refuses to seed an admin in production and points to crm:create-admin', function (): void {
+    config(['crm.admin.email' => 'boss@example.com', 'crm.admin.password' => Auth::STRONG_PASSWORD]);
+    $this->app->detectEnvironment(static fn (): string => 'production');
+
+    expect(fn () => $this->seed(AdminUserSeeder::class))->toThrow(RuntimeException::class, 'crm:create-admin');
+    expect(User::query()->count())->toBe(0);
+});
