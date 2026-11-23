@@ -18,6 +18,10 @@ class AdminUserSeeder extends Seeder
 {
     public function run(CreateAdminUser $createAdmin, UserRepository $users): void
     {
+        if (app()->isProduction()) {
+            throw new RuntimeException('AdminUserSeeder no se ejecuta en producción; usa php artisan crm:create-admin.');
+        }
+
         $email = config('crm.admin.email');
         $password = config('crm.admin.password');
 
