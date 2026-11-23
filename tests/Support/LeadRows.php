@@ -29,4 +29,26 @@ final class LeadRows
     {
         DB::statement('SET CONSTRAINTS leads_status_position_unique IMMEDIATE');
     }
+
+    /**
+     * Bulk-inserts $count leads (unique positions per status) with a fast raw insert, for volume tests.
+     *
+     * @param  array<string, mixed>  $overrides
+     */
+    public static function insertMany(int $count, array $overrides = [], int $firstPosition = 0): void
+    {
+        foreach (array_chunk(range(0, $count - 1), 1000) as $chunk) {
+            DB::table('leads')->insert(array_map(
+                static fn (int $i): array => array_merge([
+                    'name' => 'Lead '.$i,
+                    'email' => 'lead'.$i.'@example.test',
+                    'status' => 'new',
+                    'position' => $firstPosition + $i,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ], $overrides),
+                $chunk,
+            ));
+        }
+    }
 }
