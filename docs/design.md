@@ -297,3 +297,10 @@ Implementa `laravel-specialist`; audita `security-scanner` (inyección CSV).
 - `TestSuiteHygieneTest` no detecta funciones con sangría ni `define()`.
 - `CreateAdminUser::hash()` traduce cualquier InvalidArgumentException a WeakPassword.
 - Mensaje de `WeakPassword` habla de "72 caracteres" (son bytes).
+- (Revisión 2026-11-23) `ActivityTimeline::save` no comprueba que el lead siga existiendo: con borrado de leads daría 500 por FK. Al introducir el borrado, usar `findOrFail` + `authorize('view')` en `save()`.
+- (Revisión 2026-11-23) `PipelineBoard::MAX_COLUMN_SIZE = 1000`: una columna con más leads deja el arrastre en 422 sin mensaje. Mostrar un error legible o paginar las columnas si se acerca a ese volumen.
+- (Revisión 2026-11-23) `onEnd` de SortableJS llama a `moveLead` aunque la tarjeta se suelte en el mismo sitio: añadir `if (e.from === e.to && e.oldIndex === e.newIndex) return;`.
+- (Revisión 2026-11-23) `AdminAccessTest` "adds no queries beyond loading the user" mide la redirección de `/`; medir también `GET /pipeline`.
+- (Revisión 2026-11-23) `CreateAdminCommand` comprueba el vacío con `trim` ASCII (la Action ya rechaza NBSP); unificar el criterio o quitar el doble chequeo.
+- Los tests escriben en `storage/logs/security-*.log` real (canal "testing"): redirigir el canal `security` a `null` o a un fake en tests.
+- La suite completa supera los 128 MB: `phpunit.xml` fija `memory_limit=512M`. Investigar si algún test retiene memoria (p. ej. el de exportación de 5000 leads).
