@@ -26,6 +26,13 @@ abstract class TestCase extends BaseTestCase
         return parent::createApplication();
     }
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->withoutVite();
+    }
+
     /**
      * @return array<class-string, class-string>
      */
