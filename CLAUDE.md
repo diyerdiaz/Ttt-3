@@ -23,6 +23,7 @@ Laravel 13, PHP 8.4+, PostgreSQL (BDs `crm` y `crm_test`, usuario `diyer`), Pest
 - Bindings interfaz→implementación en `App\Providers\DomainServiceProvider`.
 
 ## Convenciones
+- Columnas de fecha en PostgreSQL: `timestampsTz()` / `timestampTz()` (timestamptz), nunca `timestamps()`/`timestamp()`; `tests/Feature/SchemaConventionsTest.php` falla si alguna columna de `public` es `timestamp without time zone`.
 - `declare(strict_types=1);` en todo el código (lo exige `tests/Arch/ArchitectureTest.php`).
 - Los tests de arquitectura viven en `tests/Arch`; los de feature usan `RefreshDatabase`.
 - Sin secretos en el repo: `.env` no se versiona, mantener `.env.example`.
