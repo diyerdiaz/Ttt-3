@@ -107,7 +107,7 @@ it('validates occurred_at as a date', function (string $value): void {
     'year zero' => ['0000-01-01T00:00'],
 ]);
 
-it('rejects a moment more than one day in the future', function (): void {
+it('validates occurred_at as a date not far in the future', function (): void {
     TimelineComponent::open($this->lead)->set('description', 'x')->set('occurredAt', '2026-11-24T12:01')->call('save')->assertHasErrors(['occurredAt' => 'before_or_equal']);
 
     expect(Activity::query()->count())->toBe(0);
@@ -223,7 +223,7 @@ it('forbids non-admins from opening the timeline', function (): void {
     TimelineComponent::open($this->lead)->assertForbidden();
 });
 
-it('does not let a non-admin log an activity through the component', function (): void {
+it('forbids logging activities to non-admins', function (): void {
     $component = TimelineComponent::open($this->lead)->set('description', 'sneaky');
 
     $this->app['auth']->logout();

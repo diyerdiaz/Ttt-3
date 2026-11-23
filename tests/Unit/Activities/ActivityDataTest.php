@@ -37,9 +37,18 @@ it('rejects a description longer than 5000 characters', function (): void {
     new ActivityData(str_repeat('a', 5001), CarbonImmutable::now());
 })->throws(InvalidArgumentException::class, 'description');
 
-it('rejects a description holding a NUL byte, which PostgreSQL cannot store', function (): void {
-    new ActivityData("bad\0text", CarbonImmutable::now());
-})->throws(InvalidArgumentException::class, 'description');
+it('rejects a description that is not clean text', function (string $description): void {
+    new ActivityData($description, CarbonImmutable::now());
+})->with([
+    'NUL byte, which PostgreSQL cannot store' => ["bad\0text"],
+    'bell control character' => ["bad\x07text"],
+    'carriage return' => ["line\r\nbreak"],
+    'invalid UTF-8' => ["Ana\xC3lytical"],
+])->throws(InvalidArgumentException::class, 'description');
+
+it('keeps line breaks and tabs in the description', function (): void {
+    expect((new ActivityData("line 1\n\tline 2", CarbonImmutable::now()))->description)->toBe("line 1\n\tline 2");
+});
 
 it('rejects an unknown activity type', function (): void {
     ActivityType::from('fax');
